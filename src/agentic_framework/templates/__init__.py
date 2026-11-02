@@ -1,0 +1,1 @@
+"""Packaged canonical template assets."""

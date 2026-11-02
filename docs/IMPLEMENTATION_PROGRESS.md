@@ -1,0 +1,125 @@
+# Implementation progress
+
+## Phase 1 — Foundation
+
+Status: complete (2026-11-02)
+
+Planned deliverables:
+
+- [x] Repository metadata and packaging configuration
+- [x] Python source package and CLI entry points
+- [x] YAML configuration models and validation
+- [x] Console and JSONL event logging
+- [x] Repository agent guidance
+- [x] Focused unit tests
+- [x] Ruff verification passes
+- [x] Pytest suite passes (15 tests, 90.81% branch-aware coverage)
+- [x] Editable installation, wheel build, and both CLI entry points are verified
+
+Verification environment: Python 3.14.4.
+
+Phase 1 review (2026-11-02): package boundaries, configuration safety, logging handler
+ownership, CLI error handling, and tests were reviewed. No blocking defects were found; the
+original Phase 1 gate was rerun successfully before Phase 2 work began.
+
+## Phase 2 — Project initialization
+
+Status: complete (2026-11-02)
+
+Planned deliverables:
+
+- [x] `python -m agentic_framework init` and `adt init`
+- [x] New and existing project detection
+- [x] Git repository detection and optional safe initialization
+- [x] Common technology and package-manager detection
+- [x] Required project directory generation
+- [x] Safe file conflict proposals
+- [x] Deterministic initialization report
+- [x] Repeatable initialization that preserves project files
+- [x] Unit and acceptance tests
+- [x] Ruff verification passes
+- [x] Full pytest suite passes (30 tests, 91.46% branch-aware coverage)
+- [x] Wheel build and two-run CLI/module smoke checks pass
+
+Phase 2 deliberately creates the directory and configuration foundation without creating
+placeholder SQLite state, workflow state, canonical agent definitions, or IDE adapter files.
+Those remain owned by Phases 3, 6, and 7 respectively.
+
+## Phase 5 — Requirements management
+
+Status: complete for the requested standalone capability (2026-11-02)
+
+This capability was explicitly requested before Phases 3 and 4. It remains independent of the
+future SQLite runtime and command registry.
+
+- [x] Recursive multi-file inbox inventory
+- [x] SHA-256 hashing and byte-for-byte source preservation
+- [x] Atomic immutable version publication
+- [x] Existing-version integrity validation
+- [x] Hash-based duplicate submission detection
+- [x] UTF-8 text extraction boundary with explicit unsupported/failed statuses
+- [x] `REQ-NNN` parsing, conflict detection, and initial traceability records
+- [x] Added, modified, removed, and unchanged comparison with the previous version
+- [x] Human-readable impact report
+- [x] Concurrent-ingestion lock and symbolic-link rejection
+- [x] CLI entry point and actionable expected-error handling
+- [x] Unit, integration, and acceptance tests
+- [x] Ruff verification passes
+- [x] Full suite passes (45 tests, 92.22% branch-aware coverage)
+
+## Phase 3 — Runtime and persistence
+
+Status: core acceptance scope complete (2026-11-02)
+
+- [x] SQLite schema and idempotent initialization
+- [x] Persistent workflow, task, approval, checkpoint, and event tables
+- [x] Workflow, task, and execution JSON snapshots
+- [x] JSONL event history
+- [x] Integrity-checked pause/stop checkpoints
+- [x] Cross-process recovery from the verified checkpoint stage
+
+## Phase 4 — Command system
+
+Status: lifecycle acceptance scope complete (2026-11-02)
+
+- [x] Central command registry
+- [x] Start, status, pause, resume, continue, stop, and help
+- [x] Review, approve, revise, requirements, and tasks
+- [x] Expected failures return actionable errors without tracebacks
+
+## Phase 6 — Agent and workflow system
+
+Status: configuration foundation complete; execution remains incomplete
+
+- [x] Canonical configurable lifecycle with approval metadata
+- [x] Eleven canonical agent definitions and safety fields
+- [x] Approval-gate enforcement
+- [ ] Task dependencies and genuine sequential specialist execution
+
+## Phase 7 — IDE adapters
+
+Status: Codex and Antigravity acceptance scope complete; VS Code remains incomplete
+
+- [x] Root Codex `AGENTS.md`
+- [x] Validated repository-local Codex command skill
+- [x] Antigravity rules and shared skill
+- [x] Explicit documentation of unsupported/undocumented custom-agent discovery
+- [ ] VS Code agent-environment generation and validation
+
+## Release acceptance review
+
+Status: requested Django + React acceptance slice passed; complete release not ready
+
+- [x] Clean wheel-installed disposable Django + React project
+- [x] Idempotent actual initialization command
+- [x] Codex and Antigravity configuration validation
+- [x] Requirements version and impact-report workflow
+- [x] State database, commands, approval gates, and cross-process recovery
+- [x] Full suite passes (56 tests, 90.65% branch-aware coverage)
+- [x] Detailed findings and remaining blockers recorded in `docs/ACCEPTANCE_REPORT.md`
+
+## Remaining phases
+
+Phase 8, Phase 9, the VS Code portion of Phase 7, the execution portion of Phase 6, and final
+release work remain. Their scope and dependencies are documented in `docs/IMPLEMENTATION_PLAN.md`.
+
