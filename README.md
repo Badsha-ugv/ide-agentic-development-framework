@@ -1,0 +1,1 @@
+Initializing Agentic Development Framework for IDE
