@@ -10,6 +10,7 @@ import typer
 from agentic_framework import __version__
 from agentic_framework.core.command_registry import COMMANDS
 from agentic_framework.core.config import dump_config, load_config
+from agentic_framework.core.custom_commands import create_custom_command, custom_commands
 from agentic_framework.core.initialization import FileStatus, initialize_project
 from agentic_framework.core.workflow import WorkflowService
 from agentic_framework.exceptions import (
@@ -29,8 +30,14 @@ config_app = typer.Typer(help="Inspect and validate framework configuration.")
 requirements_app = typer.Typer(
     help="Show, version, and compare project requirements.", invoke_without_command=True
 )
+stage_app = typer.Typer(help="Inspect, complete, or fail the current execution stage.")
+artifact_app = typer.Typer(help="Register and inspect stage deliverables.")
+command_app = typer.Typer(help="Create and inspect ADF-aware Antigravity slash commands.")
 app.add_typer(config_app, name="config")
 app.add_typer(requirements_app, name="requirements")
+app.add_typer(stage_app, name="stage")
+app.add_typer(artifact_app, name="artifact")
+app.add_typer(command_app, name="command")
 
 
 def _version_callback(value: bool) -> None:
@@ -85,6 +92,25 @@ def _workflow_action(path: Path, action: str) -> None:
         raise typer.Exit(code=2) from exc
     typer.echo(f"Status: {result['status']}")
     typer.echo(f"Stage: {result['current_stage']}")
+    execution = result.get("execution")
+    if execution:
+        typer.echo(f"Execution: {execution['status']}")
+        if execution.get("current_task"):
+            typer.echo(f"Current task: {execution['current_task']}")
+        typer.echo(f"Attempts: {execution['attempt_count']}")
+        if execution.get("blocker"):
+            typer.echo(f"Blocker: {execution['blocker']}")
+        if execution.get("error"):
+            typer.echo(f"Error: {execution['error']}")
+    if result.get("approval"):
+        typer.echo(f"Approval: {result['approval']}")
+    contract = result.get("contract")
+    if contract:
+        typer.echo(f"Objective: {contract['objective']}")
+        typer.echo("Expected outputs:")
+        for output in contract["expected_outputs"]:
+            typer.echo(f"- {output}")
+        typer.echo(f"Contract: {result['contract_file']}")
 
 
 @app.command("start")
@@ -117,7 +143,7 @@ def resume(path: Annotated[Path, typer.Option("--path")] = Path(".")) -> None:
 
 @app.command("continue")
 def continue_command(path: Annotated[Path, typer.Option("--path")] = Path(".")) -> None:
-    """Advance to the next eligible workflow stage."""
+    """Prepare or resume the current stage without advancing it."""
 
     _workflow_action(path, "continue_workflow")
 
@@ -157,7 +183,8 @@ def review(path: Annotated[Path, typer.Option("--path")] = Path(".")) -> None:
     """List items awaiting approval or revision."""
 
     try:
-        values = WorkflowService(path).store.approvals()
+        service = WorkflowService(path)
+        values = service.store.approvals()
     except StateError as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=2) from exc
@@ -166,6 +193,8 @@ def review(path: Annotated[Path, typer.Option("--path")] = Path(".")) -> None:
         typer.echo("No deliverables waiting for review.")
     for item in pending:
         typer.echo(f"{item['stage_id']}: {item['status']}")
+        for artifact in service.store.artifacts(item["stage_id"]):
+            typer.echo(f"- {artifact['path']} (revision {artifact['revision']})")
 
 
 @app.command("approve")
@@ -177,11 +206,12 @@ def approve(
 
     try:
         service = WorkflowService(path)
-        service.approve(stage)
+        result = service.approve(stage)
     except StateError as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=2) from exc
     typer.echo(f"Approved: {stage}")
+    typer.echo(f"Stage: {result['current_stage']}")
 
 
 @app.command("revise")
@@ -194,11 +224,146 @@ def revise(
 
     try:
         service = WorkflowService(path)
-        service.revise(stage, feedback)
+        result = service.revise(stage, feedback)
     except StateError as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=2) from exc
     typer.echo(f"Revision requested: {stage}")
+    typer.echo(f"Execution: {result['execution']['status']}")
+
+
+@stage_app.command("show")
+def show_stage(
+    stage: Annotated[str | None, typer.Argument(help="Stage ID; defaults to current.")] = None,
+    path: Annotated[Path, typer.Option("--path")] = Path("."),
+) -> None:
+    """Show the structured execution contract for a stage."""
+
+    try:
+        service = WorkflowService(path)
+        contract = service.stage_contract(stage)
+        current = service.status()
+    except StateError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"Stage: {contract.id}")
+    typer.echo(f"Objective: {contract.objective}")
+    if contract.id == current["current_stage"]:
+        typer.echo(f"Execution: {current['execution']['status']}")
+    typer.echo("Expected outputs:")
+    for output in contract.expected_outputs:
+        typer.echo(f"- {output}")
+
+
+@stage_app.command("complete")
+def complete_stage(path: Annotated[Path, typer.Option("--path")] = Path(".")) -> None:
+    """Validate registered outputs and complete the current stage."""
+
+    _workflow_action(path, "complete_stage")
+
+
+@stage_app.command("fail")
+def fail_stage(
+    message: Annotated[str, typer.Argument(help="Actionable failure or blocker detail.")],
+    blocked: Annotated[
+        bool, typer.Option("--blocked", help="Record an external blocker instead of a failure.")
+    ] = False,
+    path: Annotated[Path, typer.Option("--path")] = Path("."),
+) -> None:
+    """Persist a stage failure or blocker without advancing."""
+
+    try:
+        result = WorkflowService(path).fail_stage(message, blocked=blocked)
+    except StateError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"Stage: {result['current_stage']}")
+    typer.echo(f"Execution: {result['execution']['status']}")
+
+
+@stage_app.command("task")
+def set_stage_task(
+    description: Annotated[str, typer.Argument(help="Current IDE-agent task description.")],
+    path: Annotated[Path, typer.Option("--path")] = Path("."),
+) -> None:
+    """Persist the current stage-scoped IDE-agent task."""
+
+    try:
+        result = WorkflowService(path).set_current_task(description)
+    except StateError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"Stage: {result['current_stage']}")
+    typer.echo(f"Current task: {result['execution']['current_task']}")
+
+
+@artifact_app.command("register")
+def register_artifact(
+    artifact_path: Annotated[str, typer.Argument(help="Project-relative deliverable path.")],
+    stage: Annotated[str | None, typer.Option("--stage")] = None,
+    path: Annotated[Path, typer.Option("--path")] = Path("."),
+) -> None:
+    """Register the current bytes of a stage deliverable."""
+
+    try:
+        artifact = WorkflowService(path).register_artifact(artifact_path, stage)
+    except StateError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"Registered: {artifact['path']}")
+    typer.echo(f"Stage: {artifact['stage_id']}")
+    typer.echo(f"Revision: {artifact['revision']}")
+    typer.echo(f"SHA-256: {artifact['sha256']}")
+
+
+@artifact_app.command("list")
+def list_artifacts(
+    stage: Annotated[str | None, typer.Option("--stage")] = None,
+    path: Annotated[Path, typer.Option("--path")] = Path("."),
+) -> None:
+    """List current registered artifact revisions."""
+
+    try:
+        service = WorkflowService(path)
+        values = service.store.artifacts(stage)
+    except StateError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    if not values:
+        typer.echo("No artifacts registered.")
+    for artifact in values:
+        typer.echo(
+            f"{artifact['stage_id']}: {artifact['path']} "
+            f"(revision {artifact['revision']}, {artifact['sha256']})"
+        )
+
+
+@command_app.command("create")
+def create_command(
+    name: Annotated[str, typer.Argument(help="Slash-command name without the leading slash.")],
+    instructions: Annotated[str, typer.Argument(help="Project-specific command instructions.")],
+    path: Annotated[Path, typer.Option("--path")] = Path("."),
+) -> None:
+    """Create a non-overwriting, stage-aware Antigravity workspace skill."""
+
+    try:
+        command = create_custom_command(path, name, instructions)
+    except StateError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"Created command: /{command.name}")
+    typer.echo(f"Skill: {command.path}")
+
+
+@command_app.command("list")
+def list_commands(path: Annotated[Path, typer.Option("--path")] = Path(".")) -> None:
+    """List slash-command skills discoverable in the workspace."""
+
+    values = custom_commands(path)
+    if not values:
+        typer.echo("No workspace command skills found.")
+    for command in values:
+        typer.echo(f"/{command.name}: {command.path}")
 
 
 @config_app.command("validate")

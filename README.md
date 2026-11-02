@@ -6,7 +6,8 @@ human-controlled software development workflows driven through IDE coding agents
 The project is being delivered incrementally. The current implementation provides the
 installable package, strict configuration validation, structured logging, safe project
 initialization, immutable requirements versioning, SQLite workflow state, recovery checkpoints,
-lifecycle commands, and Codex/Antigravity project configuration.
+lifecycle commands, structured stage execution contracts, artifact validation, approval history,
+and Codex/Antigravity project configuration.
 
 ## Requirements
 
@@ -46,11 +47,19 @@ adt status
 adt pause
 adt resume
 adt continue
+adt stage show
+adt stage task "custom stage-scoped task"
+adt artifact register docs/discovery/project-overview.md
+adt artifact list
+adt stage complete
+adt stage fail --blocked "Clarification required"
 adt stop
 adt review
 adt approve requirements_review
 adt revise requirements_review "Clarify the acceptance criteria"
 adt tasks
+adt command create verify-api "Run the current-stage API checks"
+adt command list
 ```
 
 The validation command prints the normalized configuration as YAML and exits with code 2
@@ -102,15 +111,44 @@ Initialization creates `.agentic/database/agentic.db` as the transactional sourc
 inspection snapshots under `.agentic/state/`, a JSONL event history, and checkpoint storage.
 Pause and stop persist checkpoints. Resume verifies checkpoint integrity and restores the
 checkpoint stage instead of trusting potentially inconsistent conversational context or snapshot
-files. Mandatory workflow approval stages cannot advance until approval is recorded.
+files. Execution status, current task, attempts, errors, blockers, registered artifact hashes,
+approvals, and revisions survive IDE and computer restarts. Mandatory workflow approval stages
+cannot advance until approval is recorded.
+
+`adt start` and `adt continue` prepare the current stage; they do not pretend that an AI task was
+completed and never silently skip deliverables. The IDE agent performs reasoning and file changes
+using `.agentic/execution-contracts.yaml`. It registers each output with `adt artifact register`,
+then uses `adt stage complete` to validate and advance. Review stages stop at
+`awaiting_approval` until an explicit `adt approve` or `adt revise` operation. See
+[`docs/WORKFLOW_ARCHITECTURE.md`](docs/WORKFLOW_ARCHITECTURE.md),
+[`docs/COMMAND_REFERENCE.md`](docs/COMMAND_REFERENCE.md), and
+[`docs/STAGE_EXECUTION.md`](docs/STAGE_EXECUTION.md).
 
 ## IDE configuration
 
-ADF generates root `AGENTS.md`, a shared command skill under
-`.agents/skills/agentic-commands/`, and Antigravity rules under `.agents/rules/`. The Codex adapter
+ADF generates root `AGENTS.md`, command-named Antigravity skills under `.agents/skills/`, a shared
+execution protocol under `.agents/skills/agentic-commands/`, and rules under `.agents/rules/`.
+Antigravity indexes each skill as `/<skill-name>`, so `/continue` invokes the generated `continue`
+skill and causes the IDE agent—not the terminal process—to execute the current stage. The Codex adapter
 uses the documented root instructions and repository-local skill surfaces. The `.codex/agents/`
 directory contains an informational compatibility note; ADF does not claim an undocumented
 custom-agent file format is automatically discovered.
+
+After `adt init` and `adt requirements ingest`, open the project root in Antigravity and type
+`/continue`. Generated rules instruct the agent to load the current contract, perform project
+discovery, create and register its four discovery documents, and persist a blocker instead of
+fabricating missing answers. See [`docs/ANTIGRAVITY_SETUP.md`](docs/ANTIGRAVITY_SETUP.md) and
+[`docs/APPROVALS_AND_REVISIONS.md`](docs/APPROVALS_AND_REVISIONS.md).
+
+Use `/adf <request>` for an ad hoc request that must remain bound to the current stage and status.
+To register a reusable project-specific slash command, run `adt command create NAME
+"INSTRUCTIONS"`; `/NAME` then performs the same persisted-state and contract preflight. Because
+Antigravity reserves `/resume` for its conversation feature, ADF checkpoint recovery is exposed as
+`/adf-resume`.
+
+For projects initialized by an earlier ADF version, upgrade the package and rerun `adt init`.
+SQLite schema migration is automatic and additive. New managed files are created, while conflicts
+with customized guidance are preserved as `.agentic/proposals/**/*.proposed` for manual review.
 
 ## Configuration
 

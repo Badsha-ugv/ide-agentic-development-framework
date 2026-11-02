@@ -64,9 +64,13 @@ def _verify_files(root: Path) -> None:
         "AGENTS.md",
         ".agents/rules/adf.md",
         ".agents/skills/agentic-commands/SKILL.md",
+        ".agents/skills/continue/SKILL.md",
+        ".agents/skills/adf/SKILL.md",
+        ".agents/skills/adf-resume/SKILL.md",
         ".codex/agents/README.md",
         ".agentic/config.yaml",
         ".agentic/workflow.yaml",
+        ".agentic/execution-contracts.yaml",
         ".agentic/policies.yaml",
         ".agentic/agent-registry.yaml",
         ".agentic/database/agentic.db",
@@ -92,12 +96,21 @@ def _verify_files(root: Path) -> None:
 def _verify_database(root: Path) -> None:
     database = root / ".agentic/database/agentic.db"
     with closing(sqlite3.connect(database)) as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
         tables = {
             row[0]
             for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
         }
-    assert {"workflow", "tasks", "approvals", "checkpoints", "events"} <= tables
+    assert {
+        "workflow",
+        "tasks",
+        "approvals",
+        "checkpoints",
+        "events",
+        "stage_executions",
+        "artifacts",
+        "revisions",
+    } <= tables
 
 
 def run_acceptance(artifact: Path) -> dict[str, object]:
@@ -117,7 +130,16 @@ def run_acceptance(artifact: Path) -> dict[str, object]:
         adt = environment / "bin" / "adt"
         _run([str(python), "-m", "pip", "install", str(artifact)], cwd=root)
         assert "Local-first agentic development" in _run([str(adt), "--help"], cwd=root)
-        assert "adt 0.1.0" in _run([str(adt), "--version"], cwd=root)
+        installed_version = _run(
+            [
+                str(python),
+                "-c",
+                "import importlib.metadata; "
+                "print(importlib.metadata.version('agentic-development-framework'))",
+            ],
+            cwd=root,
+        ).strip()
+        assert f"adt {installed_version}" in _run([str(adt), "--version"], cwd=root)
         assert "Local-first agentic development" in _run(
             [str(python), "-m", "agentic_framework", "--help"], cwd=root
         )
@@ -131,7 +153,7 @@ def run_acceptance(artifact: Path) -> dict[str, object]:
         _verify_files(new_project)
         _verify_database(new_project)
         assert "Project mode: new" in new_init
-        assert "Created files: 10" in new_init
+        assert "Created files: 24" in new_init
         assert "Created files: 0" in new_second_init
 
         init_output = _run([str(adt), "init", "--no-git"], cwd=root)
@@ -145,7 +167,7 @@ def run_acceptance(artifact: Path) -> dict[str, object]:
         report = (root / ".agentic/reports/initialization.md").read_text(encoding="utf-8")
         assert "Django" in report and "JavaScript" in report and "npm" in report
         assert "Project mode: existing" in init_output
-        assert "Created files: 9" in init_output
+        assert "Created files: 23" in init_output
         assert "Conflicts: 1" in init_output
         assert "Created files: 0" in second_init
         assert "Conflicts: 1" in second_init
@@ -165,8 +187,22 @@ def run_acceptance(artifact: Path) -> dict[str, object]:
 
         assert "Status: active" in _run([str(adt), "start"], cwd=root)
         assert "project_discovery" in _run([str(adt), "continue"], cwd=root)
+        discovery_outputs = (
+            "docs/discovery/project-overview.md",
+            "docs/discovery/stakeholder-analysis.md",
+            "docs/discovery/clarification-log.md",
+            "docs/discovery/assumptions-and-risks.md",
+        )
+        for relative in discovery_outputs:
+            output = root / relative
+            output.write_text(f"# {output.stem}\n\nAcceptance evidence.\n", encoding="utf-8")
+            assert "Registered:" in _run(
+                [str(adt), "artifact", "register", relative], cwd=root
+            )
+        completion = _run([str(adt), "stage", "complete"], cwd=root)
+        assert "requirements_ingestion" in completion
         assert "Status: paused" in _run([str(adt), "pause"], cwd=root)
-        assert "project_discovery" in _run([str(adt), "status"], cwd=root)
+        assert "requirements_ingestion" in _run([str(adt), "status"], cwd=root)
         assert "Status: active" in _run([str(adt), "resume"], cwd=root)
         assert "Status: stopped" in _run([str(adt), "stop"], cwd=root)
         assert "Status: active" in _run([str(adt), "resume"], cwd=root)

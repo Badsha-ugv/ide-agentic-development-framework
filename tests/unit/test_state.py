@@ -18,16 +18,30 @@ def test_initialization_creates_database_snapshots_and_event_log(tmp_path: Path)
     assert store.events_path.is_file()
     assert store.workflow()["status"] == "not_started"
     assert json.loads((store.state_dir / "workflow.json").read_text())["current_stage"] == (
-        "project_initialization"
+        "project_discovery"
     )
     assert json.loads((store.state_dir / "tasks.json").read_text()) == []
     with closing(sqlite3.connect(store.database_path)) as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
         tables = {
             row[0]
             for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
         }
-    assert {"project", "workflow", "tasks", "approvals", "checkpoints", "events"} <= tables
+    assert {
+        "project",
+        "workflow",
+        "tasks",
+        "approvals",
+        "checkpoints",
+        "events",
+        "stage_executions",
+        "artifacts",
+        "revisions",
+    } <= tables
+    assert store.execution("project_initialization")["status"] == "completed"
+    assert store.artifacts("project_initialization")[0]["path"] == (
+        ".agentic/reports/initialization.md"
+    )
 
 
 def test_database_reinitialization_preserves_workflow_state(tmp_path: Path) -> None:

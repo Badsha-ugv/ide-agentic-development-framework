@@ -33,16 +33,20 @@ def test_pause_close_reopen_and_resume_from_checkpoint(tmp_path: Path) -> None:
 def test_mandatory_approval_gate_blocks_until_approved(tmp_path: Path) -> None:
     initialize_project(tmp_path, initialize_git=False)
     service = WorkflowService(tmp_path)
-    service.start()
-    for _ in range(5):
-        state = service.continue_workflow()
+    service.store.update_workflow("active", "requirements_review")
+    state = service.continue_workflow()
     assert state["current_stage"] == "requirements_review"
+    for output in service.stage_contract().expected_outputs:
+        artifact = tmp_path / output
+        artifact.parent.mkdir(parents=True, exist_ok=True)
+        artifact.write_text(f"# {artifact.stem}\n", encoding="utf-8")
+        service.register_artifact(output)
+    waiting = service.complete_stage()
+    assert waiting["execution"]["status"] == "awaiting_approval"
 
-    with pytest.raises(StateError, match="requires approval"):
+    with pytest.raises(StateError, match="awaiting review"):
         service.continue_workflow()
-
-    service.store.set_approval("requirements_review", "approved")
-    assert service.continue_workflow()["current_stage"] == "system_architecture"
+    assert service.approve("requirements_review")["current_stage"] == "system_architecture"
 
 
 def test_invalid_lifecycle_transitions_are_actionable(tmp_path: Path) -> None:

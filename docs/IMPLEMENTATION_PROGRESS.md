@@ -69,7 +69,7 @@ future SQLite runtime and command registry.
 
 ## Phase 3 — Runtime and persistence
 
-Status: core acceptance scope complete (2026-11-02)
+Status: persistent execution scope complete (2026-11-02)
 
 - [x] SQLite schema and idempotent initialization
 - [x] Persistent workflow, task, approval, checkpoint, and event tables
@@ -77,23 +77,32 @@ Status: core acceptance scope complete (2026-11-02)
 - [x] JSONL event history
 - [x] Integrity-checked pause/stop checkpoints
 - [x] Cross-process recovery from the verified checkpoint stage
+- [x] Additive schema-v2 migration for existing initialized projects
+- [x] Persistent stage status, current task, attempts, blockers, and errors
+- [x] SHA-256 artifact registration and metadata revisions
+- [x] Approval feedback and immutable submitted-revision snapshots
 
 ## Phase 4 — Command system
 
-Status: lifecycle acceptance scope complete (2026-11-02)
+Status: execution-aware lifecycle scope complete (2026-11-02)
 
 - [x] Central command registry
 - [x] Start, status, pause, resume, continue, stop, and help
 - [x] Review, approve, revise, requirements, and tasks
 - [x] Expected failures return actionable errors without tracebacks
+- [x] Continue prepares/resumes the current stage without silently advancing
+- [x] Stage contract inspection, artifact registration/listing, completion, failure, and blockers
 
 ## Phase 6 — Agent and workflow system
 
-Status: configuration foundation complete; execution remains incomplete
+Status: IDE-agent execution contract complete; specialist delegation remains incremental
 
 - [x] Canonical configurable lifecycle with approval metadata
 - [x] Eleven canonical agent definitions and safety fields
 - [x] Approval-gate enforcement
+- [x] Structured execution contracts for all nineteen lifecycle stages
+- [x] Deliverable presence, non-empty content, and registered-hash validation
+- [x] Discovery, requirements, architecture, design, planning, delivery, and release outputs
 - [ ] Task dependencies and genuine sequential specialist execution
 
 ## Phase 7 — IDE adapters
@@ -104,6 +113,10 @@ Status: Codex and Antigravity acceptance scope complete; VS Code remains incompl
 - [x] Validated repository-local Codex command skill
 - [x] Antigravity rules and shared skill
 - [x] Explicit documentation of unsupported/undocumented custom-agent discovery
+- [x] Real command-named Antigravity skills for `/start`, `/continue`, status, and review actions
+- [x] `/adf-resume` recovery command that avoids Antigravity's built-in `/resume` collision
+- [x] State-aware `/adf <request>` and safe custom slash-command generation
+- [x] Antigravity setup, command, stage execution, approval, and migration documentation
 - [ ] VS Code agent-environment generation and validation
 
 ## Release acceptance review
@@ -125,7 +138,7 @@ Status: PyPI 0.1.0 release gates passed (2026-11-02)
 
 ## Remaining phases
 
-Phase 8, Phase 9, the VS Code portion of Phase 7, and the execution portion of Phase 6 remain on
-the broader framework roadmap. They are not represented as implemented in the 0.1.0 alpha release;
-their scope and dependencies are documented in `docs/IMPLEMENTATION_PLAN.md`.
+Phase 8, broader Phase 9 integrations, the VS Code portion of Phase 7, and native AI-provider
+integration remain on the roadmap. IDE agents are the supported reasoning layer; the CLI does not
+embed or call a paid model API. These changes are included in the 0.2.0 release candidate.
 

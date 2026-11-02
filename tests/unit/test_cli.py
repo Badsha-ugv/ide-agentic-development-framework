@@ -11,7 +11,7 @@ def test_cli_reports_version() -> None:
     result = runner.invoke(app, ["--version"])
 
     assert result.exit_code == 0
-    assert result.stdout == "adt 0.1.0\n"
+    assert result.stdout == "adt 0.2.0\n"
 
 
 def test_module_cli_has_help() -> None:

@@ -84,8 +84,8 @@ Review the complete diff and confirm CI on `main` is green. Then create and push
 git switch main
 git pull --ff-only
 git status --short
-git tag -s v0.1.0 -m "Release 0.1.0"
-git push origin v0.1.0
+git tag -s v0.2.0 -m "Release 0.2.0"
+git push origin v0.2.0
 ```
 
 Use an annotated unsigned tag (`git tag -a`) only if signed tags are not available. Do not reuse a
@@ -104,7 +104,7 @@ must all pass before the OIDC publishing job can run.
    ```bash
    verify_tmp="$(mktemp -d)"
    python -m venv "$verify_tmp/venv"
-   "$verify_tmp/venv/bin/python" -m pip install agentic-development-framework==0.1.0
+   "$verify_tmp/venv/bin/python" -m pip install agentic-development-framework==0.2.0
    "$verify_tmp/venv/bin/adt" --version
    "$verify_tmp/venv/bin/adt" --help
    ```

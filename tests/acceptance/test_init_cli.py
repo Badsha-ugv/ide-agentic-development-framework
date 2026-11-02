@@ -15,7 +15,7 @@ def test_cli_initializes_project_and_is_repeatable(tmp_path: Path) -> None:
 
     assert first.exit_code == 0
     assert "Project mode: new" in first.stdout
-    assert "Created files: 10" in first.stdout
+    assert "Created files: 24" in first.stdout
     assert second.exit_code == 0
     assert "Created files: 0" in second.stdout
     assert "Conflicts: 0" in second.stdout

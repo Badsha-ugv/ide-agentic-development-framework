@@ -1,12 +1,18 @@
-"""Persistent workflow lifecycle and recovery behavior."""
+"""Persistent workflow execution, validation, approval, and recovery behavior."""
 
 from __future__ import annotations
 
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from agentic_framework.adapters.generator import APPROVAL_STAGES, STAGES
+from agentic_framework.core.stages import (
+    APPROVAL_STAGES,
+    CONTRACT_BY_ID,
+    STAGES,
+    StageContract,
+)
 from agentic_framework.exceptions import StateError
 from agentic_framework.state import RuntimeStore
 
@@ -19,22 +25,47 @@ class WorkflowService:
     store: RuntimeStore = field(init=False)
 
     def __post_init__(self) -> None:
+        self.project_root = self.project_root.expanduser().resolve()
         self.store = RuntimeStore(self.project_root)
         if not self.store.database_path.is_file():
             raise StateError(
                 f"runtime database does not exist; run adt init: {self.store.database_path}"
             )
+        # Additive and idempotent: upgrades v1 runtimes before v2 tables are read.
+        self.store.initialize()
 
     def status(self) -> dict[str, Any]:
-        return self.store.workflow()
+        """Return workflow state together with the current execution gate."""
+
+        workflow = self.store.workflow()
+        stage = workflow["current_stage"]
+        if stage not in CONTRACT_BY_ID:
+            raise StateError(f"runtime contains an unknown workflow stage: {stage}")
+        return {
+            **workflow,
+            "execution": self.store.execution(stage),
+            "approval": self.store.approval_status(stage),
+            "artifacts": self.store.artifacts(stage),
+        }
+
+    def stage_contract(self, stage: str | None = None) -> StageContract:
+        """Return the requested contract, defaulting to the current stage."""
+
+        stage_id = stage or self.store.workflow()["current_stage"]
+        try:
+            return CONTRACT_BY_ID[stage_id]
+        except KeyError as exc:
+            raise StateError(f"unknown workflow stage: {stage_id}") from exc
 
     def start(self) -> dict[str, Any]:
         current = self.status()
         if current["status"] == "paused":
             raise StateError("workflow is paused; use adt resume")
+        if current["status"] == "completed":
+            raise StateError("workflow is already completed")
         if current["status"] != "active":
             self.store.update_workflow("active", current["current_stage"])
-        return self.status()
+        return self.continue_workflow()
 
     def pause(self) -> dict[str, Any]:
         current = self.status()
@@ -66,29 +97,207 @@ class WorkflowService:
         return self.status()
 
     def continue_workflow(self) -> dict[str, Any]:
+        """Prepare or resume the current stage without advancing it."""
+
         current = self.status()
         if current["status"] != "active":
-            raise StateError("workflow must be active before it can continue")
+            raise StateError("workflow must be active before it can continue; run adt start")
         stage = current["current_stage"]
-        if stage not in STAGES:
-            raise StateError(f"runtime contains an unknown workflow stage: {stage}")
-        if stage in APPROVAL_STAGES and self.store.approval_status(stage) != "approved":
-            raise StateError(f"stage requires approval before continuing: {stage}")
-        index = STAGES.index(stage)
+        execution = current["execution"]
+        if execution["status"] == "awaiting_approval":
+            raise StateError(
+                f"stage is awaiting review; use adt approve {stage} or adt revise {stage} FEEDBACK"
+            )
+        if execution["status"] == "completed":
+            raise StateError(f"stage is already complete: {stage}")
+        contract = self.stage_contract(stage)
+        if execution["status"] == "failed" and execution["attempt_count"] >= contract.max_attempts:
+            self.store.update_execution(
+                stage,
+                "blocked",
+                blocker=f"maximum attempts reached ({contract.max_attempts})",
+            )
+            raise StateError(
+                f"stage reached its retry limit ({contract.max_attempts}); "
+                "resolve the blocker first"
+            )
+        if execution["status"] != "in_progress":
+            self.store.update_execution(
+                stage,
+                "in_progress",
+                current_task=contract.objective,
+                increment_attempt=True,
+            )
+        return self.execution_plan()
+
+    def execution_plan(self) -> dict[str, Any]:
+        """Return the IDE-agent contract for the current stage."""
+
+        current = self.status()
+        contract = self.stage_contract(current["current_stage"])
+        return {
+            **current,
+            "contract": contract.as_dict(),
+            "contract_file": ".agentic/execution-contracts.yaml",
+        }
+
+    def register_artifact(self, path: str, stage: str | None = None) -> dict[str, Any]:
+        """Register a deliverable for the active stage with immutable metadata."""
+
+        current = self.status()
+        stage_id = stage or current["current_stage"]
+        if stage_id != current["current_stage"]:
+            raise StateError("artifacts can only be registered for the current workflow stage")
+        if current["execution"]["status"] != "in_progress":
+            raise StateError("current stage is not in progress; run adt continue first")
+        self.stage_contract(stage_id)
+        return self.store.register_artifact(stage_id, path)
+
+    def set_current_task(self, description: str) -> dict[str, Any]:
+        """Persist a stage-scoped IDE-agent task without changing workflow position."""
+
+        if not description.strip():
+            raise StateError("current task description cannot be blank")
+        current = self.status()
+        if current["status"] != "active" or current["execution"]["status"] != "in_progress":
+            raise StateError("current stage must be active and in progress; run adt continue first")
+        self.store.update_execution(
+            current["current_stage"],
+            "in_progress",
+            current_task=description.strip(),
+        )
+        return self.status()
+
+    def _required_output_files(self, contract: StageContract) -> list[Path]:
+        files: list[Path] = []
+        missing: list[str] = []
+        for pattern in contract.expected_outputs:
+            matches = sorted(path for path in self.project_root.glob(pattern) if path.is_file())
+            if not matches:
+                missing.append(pattern)
+            else:
+                files.extend(matches)
+        if missing:
+            raise StateError("required stage outputs are missing: " + ", ".join(missing))
+        empty = [
+            path.relative_to(self.project_root).as_posix()
+            for path in files
+            if path.stat().st_size == 0
+        ]
+        if empty:
+            raise StateError("required stage outputs are empty: " + ", ".join(empty))
+        return list(dict.fromkeys(files))
+
+    def validate_current_stage(self) -> list[str]:
+        """Validate output presence and registered hashes for the current stage."""
+
+        current = self.status()
+        stage = current["current_stage"]
+        contract = self.stage_contract(stage)
+        files = self._required_output_files(contract)
+        registered = {item["path"]: item for item in self.store.artifacts(stage)}
+        unregistered: list[str] = []
+        stale: list[str] = []
+        for path in files:
+            relative = path.relative_to(self.project_root).as_posix()
+            artifact = registered.get(relative)
+            if artifact is None:
+                unregistered.append(relative)
+            elif artifact["sha256"] != self.store._file_sha256(path):
+                stale.append(relative)
+        if unregistered:
+            raise StateError("required outputs are not registered: " + ", ".join(unregistered))
+        if stale:
+            raise StateError("registered outputs changed; register them again: " + ", ".join(stale))
+        return [path.relative_to(self.project_root).as_posix() for path in files]
+
+    def complete_stage(self) -> dict[str, Any]:
+        """Validate and complete the current stage, stopping at approval gates."""
+
+        current = self.status()
+        stage = current["current_stage"]
+        if current["status"] != "active" or current["execution"]["status"] != "in_progress":
+            raise StateError("current stage must be active and in progress before completion")
+        self.validate_current_stage()
+        if stage in APPROVAL_STAGES:
+            self.store.set_approval(stage, "pending")
+            self.store.update_execution(stage, "awaiting_approval")
+            self.store.create_checkpoint("approval_requested")
+            return self.status()
+        self.store.update_execution(stage, "completed")
+        self.store.create_checkpoint("stage_completed")
+        self._advance(stage)
+        return self.status()
+
+    def fail_stage(self, message: str, *, blocked: bool = False) -> dict[str, Any]:
+        """Record a recoverable failure or explicit blocker without advancing."""
+
+        if not message.strip():
+            raise StateError("failure or blocker message cannot be blank")
+        current = self.status()
+        if current["status"] != "active":
+            raise StateError("only an active workflow stage can fail or block")
+        state = "blocked" if blocked else "failed"
+        self.store.update_execution(
+            current["current_stage"],
+            state,
+            blocker=message.strip() if blocked else None,
+            error=None if blocked else message.strip(),
+        )
+        self.store.create_checkpoint(f"stage_{state}")
+        return self.status()
+
+    def _advance(self, completed_stage: str) -> None:
+        index = STAGES.index(completed_stage)
         next_stage = STAGES[min(index + 1, len(STAGES) - 1)]
         next_status = "completed" if next_stage == "completed" else "active"
         self.store.update_workflow(next_status, next_stage)
+        if next_stage == "completed":
+            self.store.update_execution("completed", "completed")
         self.store.create_checkpoint("stage_transition")
+
+    def approve(self, stage: str) -> dict[str, Any]:
+        if stage not in CONTRACT_BY_ID:
+            raise StateError(f"unknown workflow stage: {stage}")
+        if stage not in APPROVAL_STAGES:
+            raise StateError(f"stage is not an approval gate: {stage}")
+        current = self.status()
+        if current["current_stage"] != stage:
+            raise StateError(f"only the current stage can be approved: {current['current_stage']}")
+        if current["execution"]["status"] != "awaiting_approval":
+            raise StateError(f"stage is not awaiting approval: {stage}")
+        self.validate_current_stage()
+        self.store.set_approval(stage, "approved")
+        self.store.update_execution(stage, "completed")
+        self.store.create_checkpoint("stage_approved")
+        self._advance(stage)
         return self.status()
 
-    def approve(self, stage: str) -> None:
-        if stage not in STAGES:
+    def revise(self, stage: str, feedback: str) -> dict[str, Any]:
+        if stage not in CONTRACT_BY_ID:
             raise StateError(f"unknown workflow stage: {stage}")
-        self.store.set_approval(stage, "approved")
-
-    def revise(self, stage: str, feedback: str) -> None:
-        if stage not in STAGES:
-            raise StateError(f"unknown workflow stage: {stage}")
+        if stage not in APPROVAL_STAGES:
+            raise StateError(f"stage is not an approval gate: {stage}")
         if not feedback.strip():
             raise StateError("revision feedback cannot be blank")
+        current = self.status()
+        if current["current_stage"] != stage:
+            raise StateError(f"only the current stage can be revised: {current['current_stage']}")
+        if current["execution"]["status"] != "awaiting_approval":
+            raise StateError(f"stage is not awaiting approval: {stage}")
+        # Preserve exactly the bytes that were validated and submitted for review.
+        self.validate_current_stage()
+
+        revision_number = len(self.store.revisions(stage)) + 1
+        relative_snapshot = Path(".agentic") / "revisions" / stage / f"revision-{revision_number}"
+        snapshot = self.project_root / relative_snapshot
+        for artifact in self.store.artifacts(stage):
+            source = self.project_root / artifact["path"]
+            destination = snapshot / artifact["path"]
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
+        self.store.record_revision(stage, feedback.strip(), relative_snapshot.as_posix())
         self.store.set_approval(stage, "revision_requested", feedback.strip())
+        self.store.update_execution(stage, "in_progress", increment_attempt=True)
+        self.store.create_checkpoint("revision_requested")
+        return self.status()

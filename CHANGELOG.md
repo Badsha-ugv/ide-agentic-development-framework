@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## 0.2.0 - 2026-11-02
+
+### Added
+
+- Machine-readable IDE-agent stage execution contracts for all nineteen workflow stages.
+- Persistent execution attempts, current tasks, blockers, errors, and explicit stage-completion
+  commands.
+- SHA-256 artifact validation, mandatory approval gates, revision feedback, and preserved review
+  snapshots.
+- Additive runtime schema migration plus Antigravity execution and recovery documentation.
+- Command-named Antigravity workspace skills so `/continue` invokes IDE-agent execution rather
+  than relying on rule interpretation alone.
+- State-aware `/adf` requests, `/adf-resume`, and safe project-specific slash-command generation.
+
+### Changed
+
+- `adt continue` now prepares or resumes the current stage and cannot silently advance it.
+- Project initialization completes its own stage and leaves project discovery pending for the IDE
+  agent.
+- Clean-install acceptance now validates generated Antigravity command skills and stage execution.
+
+## 0.1.0 - 2026-11-02
+
 ### Added
 
 - Initial package and CLI foundation.

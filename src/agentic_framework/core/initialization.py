@@ -36,9 +36,13 @@ _DIRECTORIES = (
     "requirements/inbox",
     "requirements/versions",
     "requirements/reports",
+    "docs/discovery",
+    "docs/requirements",
     "docs/architecture",
     "docs/design",
     "docs/decisions",
+    "docs/planning",
+    "docs/technical",
     "docs/revisions",
     "docs/reports",
     "design-prototype",
@@ -52,10 +56,13 @@ This project uses the Agentic Development Framework (ADF).
 - Read `.agentic/config.yaml` before framework operations.
 - Preserve existing project files and unrelated working-tree changes.
 - Do not expose secrets or perform destructive operations without explicit approval.
-- Treat framework slash commands as workflow requests even when the IDE has no native
-  slash-command support.
-- Use the `agentic-commands` skill for `/start`, `/status`, `/pause`, `/resume`, `/continue`,
-  `/stop`, `/review`, `/approve`, `/revise`, `/requirements`, and `/tasks`.
+- Antigravity workspace skills register `/start`, `/status`, `/pause`, `/continue`, `/stop`,
+  `/review`, `/approve`, `/revise`, `/requirements`, `/tasks`, `/adf-resume`, and `/adf`.
+- Use the shared `agentic-commands` skill for the complete execution protocol.
+- For `/start`, `/continue`, and `/adf-resume`, execute the current stage contract: inspect inputs,
+  reason about the requested work, create deliverables, register them with `adt artifact register`,
+  and run `adt stage complete`. The CLI persists state; the IDE agent performs the work.
+- Never treat successful `adt continue` output as completion or stage advancement.
 - Do not claim a task or phase is complete until its required checks pass.
 """
 
@@ -234,8 +241,15 @@ def initialize_project(
         git_initializer(root)
         result.git_initialized = True
 
-    RuntimeStore(root).initialize()
+    store = RuntimeStore(root)
+    store.initialize()
 
     report_path = root / ".agentic" / "reports" / "initialization.md"
     report_path.write_text(_report(result), encoding="utf-8")
+    workflow = store.workflow()
+    if workflow["current_stage"] == "project_initialization":
+        store.register_artifact("project_initialization", ".agentic/reports/initialization.md")
+        store.update_execution("project_initialization", "completed")
+        store.update_workflow("not_started", "project_discovery")
+        store.create_checkpoint("project_initialized")
     return result
