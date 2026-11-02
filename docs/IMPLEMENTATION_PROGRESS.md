@@ -108,18 +108,24 @@ Status: Codex and Antigravity acceptance scope complete; VS Code remains incompl
 
 ## Release acceptance review
 
-Status: requested Django + React acceptance slice passed; complete release not ready
+Status: PyPI 0.1.0 release gates passed (2026-11-02)
 
-- [x] Clean wheel-installed disposable Django + React project
+- [x] Clean wheel- and source-distribution-installed new and Django + React projects
 - [x] Idempotent actual initialization command
+- [x] Existing-file conflict preservation and proposal generation
 - [x] Codex and Antigravity configuration validation
 - [x] Requirements version and impact-report workflow
 - [x] State database, commands, approval gates, and cross-process recovery
-- [x] Full suite passes (56 tests, 90.65% branch-aware coverage)
-- [x] Detailed findings and remaining blockers recorded in `docs/ACCEPTANCE_REPORT.md`
+- [x] Wheel runtime resource and source-distribution content inspection
+- [x] Twine metadata and README validation
+- [x] Full source and installed-wheel suites pass (58 tests, 90.65% branch-aware coverage)
+- [x] Python 3.11, 3.12, and 3.13 CI matrix configured
+- [x] Tag-only PyPI OIDC Trusted Publishing configured
+- [x] Detailed evidence recorded in `docs/ACCEPTANCE_REPORT.md`
 
 ## Remaining phases
 
-Phase 8, Phase 9, the VS Code portion of Phase 7, the execution portion of Phase 6, and final
-release work remain. Their scope and dependencies are documented in `docs/IMPLEMENTATION_PLAN.md`.
+Phase 8, Phase 9, the VS Code portion of Phase 7, and the execution portion of Phase 6 remain on
+the broader framework roadmap. They are not represented as implemented in the 0.1.0 alpha release;
+their scope and dependencies are documented in `docs/IMPLEMENTATION_PLAN.md`.
 

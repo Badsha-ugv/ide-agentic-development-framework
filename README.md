@@ -12,6 +12,22 @@ lifecycle commands, and Codex/Antigravity project configuration.
 
 - Python 3.11 or newer
 
+## Installation
+
+The first PyPI release is prepared but has not been published yet. Until it is available, install
+from a checked-out repository:
+
+```bash
+python -m pip install .
+adt --help
+```
+
+After release, the installation command will be:
+
+```bash
+python -m pip install agentic-development-framework
+```
+
 ## Development setup
 
 ```bash
@@ -130,4 +146,5 @@ Runtime directories must be project-relative and cannot contain parent-directory
 `configure_logging()` sets up readable console output and can additionally write a JSONL
 event stream. Reconfiguration is idempotent and only replaces handlers managed by ADF.
 
-See `docs/IMPLEMENTATION_PLAN.md` and `docs/IMPLEMENTATION_PROGRESS.md` for scope and status.
+See `docs/IMPLEMENTATION_PLAN.md` and `docs/IMPLEMENTATION_PROGRESS.md` for scope and status. The
+maintainer release procedure is documented in `docs/PYPI_RELEASE.md`.

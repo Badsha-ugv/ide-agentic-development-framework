@@ -4,74 +4,81 @@ Date: 2026-11-02
 
 ## Verdict
 
-The requested Django + React acceptance slice passes. The complete first release is **not yet
-ready** against the repository Definition of Done because the release blockers listed below are
-outside the implemented slice.
+The repository passes the local release gates for the `agentic-development-framework` 0.1.0
+alpha release. No package was uploaded, no tag was created, and no remote repository state was
+changed. The remaining work is maintainer review plus the external GitHub environment and PyPI
+Trusted Publisher configuration documented in `PYPI_RELEASE.md`.
 
-## Environment and artifact
+This verdict covers the functionality represented by the package and README. Unfinished items in
+the broader framework roadmap remain explicitly marked incomplete in `IMPLEMENTATION_PROGRESS.md`.
 
-- Python: 3.14.4
-- Package: `agentic_development_framework-0.1.0-py3-none-any.whl`
-- Final wheel SHA-256: `3408c997c3b26a24999571a318f14664f31cc3b9c9082957faa5a2b8f48c36ad`
-- Installation: clean virtual environment using the wheel and declared dependencies
-- Project: disposable Django-style backend plus React frontend with npm lockfile
+## Artifacts and metadata
 
-The disposable project is created under the operating-system temporary directory and removed
-after the run. The repeatable harness is `scripts/release_acceptance.py`.
+- Python used for local verification: 3.14.4
+- Wheel: `agentic_development_framework-0.1.0-py3-none-any.whl` (31,613 bytes, 26 entries)
+- Wheel SHA-256: `ed08bb8b3c408c43461da56a37481374f628acea1c73d8c110c32e8930e91394`
+- Source distribution: `agentic_development_framework-0.1.0.tar.gz` (51 entries)
+- Distribution/import/command: `agentic-development-framework` / `agentic_framework` / `adt`
+- Version/Python: `0.1.0` / `>=3.11`
+- Build backend: Hatchling 1.26 through 1.31, producing Core Metadata 2.4
+- License: MIT (SPDX expression and packaged license file)
+
+The wheel contains every Python module and the runtime command skill at
+`agentic_framework/templates/skills/agentic-commands/SKILL.md`. Runtime YAML, policy, workflow,
+agent-registry, Codex, and Antigravity files are deterministically generated from packaged Python
+code. The source distribution contains source, tests, release scripts, documentation, changelog,
+license, README, and build metadata.
+
+Neither archive contains local `.agentic` state, SQLite databases, `.env` files, virtual
+environments, caches, Git data, or nested build artifacts.
 
 ## Passed checks
 
-- Wheel builds and contains the packaged `agentic-commands` skill.
-- The canonical skill passes the Codex skill validator.
-- The wheel installs into a clean virtual environment with declared dependencies.
-- Both `adt init` and `python -m agentic_framework init` work from the external project.
-- Repeated initialization creates zero additional generated files and preserves state.
-- Nested Django, React/JavaScript, and npm markers are detected.
-- Root Codex instructions and the repository-local command skill are generated.
-- Antigravity persistent rules and the shared command skill are generated.
-- Workflow, policies, and all eleven canonical agent definitions parse as YAML.
-- Requirements inbox, versions, reports, source preservation, comparison, and impact reporting
-  work through the installed CLI.
-- SQLite schema version and required state tables are present.
-- Workflow, task, and execution snapshots plus JSONL events are present.
-- Start, status, continue, pause, resume, stop, review, approve, revise, requirements, tasks, and
-  help commands are registered and covered by automated tests.
-- Pause/resume and stop/resume work across separate CLI processes.
-- Resume validates checkpoint integrity and restores the checkpoint stage.
-- Mandatory approval gates block continuation until an approval is recorded.
+- `ruff check .`: passed.
+- Repository pytest suite: 58 passed with 90.65% branch-aware coverage.
+- The same 58 tests imported the non-editable installed wheel from a disposable environment and
+  passed with 90.65% coverage.
+- `python -m build`: built the wheel and source distribution through isolated environments.
+- `python -m twine check dist/*`: both artifacts passed.
+- Editor diagnostics for changed Python, TOML, and workflow files: none.
+- Wheel and source-distribution member inspection: passed.
+- Secret, database, local-state, cache, virtual-environment, and nested-build exclusion scan:
+  passed.
 
-## Critical findings fixed during review
+## Clean-install acceptance
 
-1. Monorepo technology detection originally inspected only root-level markers. It now safely
-   searches common markers in nested application folders while excluding runtime/vendor trees.
-2. Resume originally trusted the current workflow row after validating a checkpoint. It now
-   restores the verified checkpoint stage and rejects missing, corrupt, malformed, or unknown-stage
-   checkpoints.
-3. Invalid approval targets and blank revision feedback are now rejected.
-4. SQLite connections owned by tests are closed cleanly; runtime connections were already scoped.
-5. Codex generation no longer implies that an undocumented `.codex/agents/*.toml` format is
-   portable or automatically discovered.
-6. The acceptance harness now performs a real dependency-resolved wheel installation and surfaces
-   child-process stdout/stderr on failure.
+Both the wheel and source distribution were separately installed into disposable, non-editable
+virtual environments outside the repository. Each artifact passed:
 
-## Automated evidence
+- `adt --help`, `adt --version`, and `python -m agentic_framework --help`;
+- valid generated configuration validation;
+- initialization of a completely empty project;
+- initialization of a representative existing Django + React project;
+- Codex instructions, command skill, Antigravity rules, workflow, policies, and eleven-agent
+  registry generation;
+- SQLite schema and expected runtime-state generation;
+- a second initialization with zero newly created files;
+- preservation of a conflicting existing `AGENTS.md` and creation of a proposal;
+- two requirements ingestions, immutable versions, comparison, and impact-report generation; and
+- start, continue, pause, resume, stop, and recovery across CLI processes.
 
-- Ruff: passed
-- Pytest: 56 passed
-- Branch-aware coverage: 90.65%
-- Editor diagnostics: none
-- Canonical skill validation: passed
-- External wheel-installed acceptance harness: passed
-- `git diff --check`: passed
+These projects lived under operating-system temporary directories and had no access to package
+files through the repository source tree.
 
-## Remaining first-release blockers
+## Release automation
 
-- Implement safe Git operations beyond initialization, including working-tree guards and branch
-  policy integration.
-- Implement Docker detection/templates and GitHub Actions generation/validation.
-- Generate and validate the VS Code agent-environment adapter.
-- Implement task creation/dependency management and genuine sequential specialist execution rather
-  than stage-only lifecycle transitions.
-- Implement existing-project analysis reports and the design workflow boundary.
-- Complete security review, example-project documentation, installation testing across the stated
-  Python support range, and the final release checklist.
+Normal CI runs lint, coverage-enforced tests on Python 3.11, 3.12, and 3.13, builds both artifacts,
+validates them with Twine, runs installed-wheel tests, exercises wheel and source-distribution
+acceptance, and uploads the artifacts.
+
+The separate publish workflow triggers only for pushed `v*` tags. Its publish job depends on all
+test and build gates, uses the protected `pypi` GitHub environment, grants `id-token: write` only
+to that job, downloads the already-tested artifacts, and invokes
+`pypa/gh-action-pypi-publish@release/v1` without a token or password.
+
+## Issue fixed during packaging review
+
+Hatchling 1.32 changed its default to Core Metadata 2.5, which Twine 6.2 rejects. The build-system
+requirement is intentionally constrained to `hatchling>=1.26,<1.32`; Hatchling 1.31 produces Core
+Metadata 2.4, preserves SPDX license metadata, and passes Twine. This can be relaxed after the
+release toolchain supports Metadata 2.5.

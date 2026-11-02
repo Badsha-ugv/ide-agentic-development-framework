@@ -21,4 +21,8 @@ All notable changes to this project will be documented in this file.
 - Canonical workflow, policy, and eleven-agent registry generation.
 - Documented Codex skill/instructions and Antigravity rule generation.
 - Wheel-installed Django + React release acceptance harness.
+- Single-source package versioning and explicit wheel/source-distribution content rules.
+- Installed-distribution resource and full-suite regression tests.
+- Python 3.11–3.13 CI plus tag-only PyPI OIDC Trusted Publishing.
+- Maintainer checklist for building, inspecting, testing, and publishing releases.
 

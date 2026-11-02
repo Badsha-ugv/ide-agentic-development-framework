@@ -1,10 +1,16 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
+.eggs/
 .coverage
+.coverage.*
+coverage.xml
+htmlcov/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 .venv/
+venv/
 build/
 dist/
 

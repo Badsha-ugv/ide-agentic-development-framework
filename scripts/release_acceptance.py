@@ -1,4 +1,4 @@
-"""Run the built wheel in a clean representative Django + React project."""
+"""Exercise a built distribution in clean new and Django + React projects."""
 
 from __future__ import annotations
 
@@ -56,6 +56,7 @@ def _write_project(root: Path) -> None:
         "export default function App() { return <main>Acceptance</main>; }\n",
         encoding="utf-8",
     )
+    (root / "AGENTS.md").write_text("# Existing project instructions\n", encoding="utf-8")
 
 
 def _verify_files(root: Path) -> None:
@@ -99,10 +100,13 @@ def _verify_database(root: Path) -> None:
     assert {"workflow", "tasks", "approvals", "checkpoints", "events"} <= tables
 
 
-def run_acceptance(wheel: Path) -> dict[str, object]:
+def run_acceptance(artifact: Path) -> dict[str, object]:
     with tempfile.TemporaryDirectory(prefix="adf-release-") as temporary:
-        root = Path(temporary) / "django-react"
+        temporary_root = Path(temporary)
+        root = temporary_root / "django-react"
+        new_project = temporary_root / "new-project"
         root.mkdir()
+        new_project.mkdir()
         _write_project(root)
         environment = Path(temporary) / "venv"
         subprocess.run(
@@ -111,15 +115,43 @@ def run_acceptance(wheel: Path) -> dict[str, object]:
         )
         python = environment / "bin" / "python"
         adt = environment / "bin" / "adt"
-        _run([str(python), "-m", "pip", "install", str(wheel)], cwd=root)
+        _run([str(python), "-m", "pip", "install", str(artifact)], cwd=root)
+        assert "Local-first agentic development" in _run([str(adt), "--help"], cwd=root)
+        assert "adt 0.1.0" in _run([str(adt), "--version"], cwd=root)
+        assert "Local-first agentic development" in _run(
+            [str(python), "-m", "agentic_framework", "--help"], cwd=root
+        )
+
+        new_init = _run(
+            [str(adt), "init", "--path", str(new_project), "--no-git"], cwd=root
+        )
+        new_second_init = _run(
+            [str(adt), "init", "--path", str(new_project), "--no-git"], cwd=root
+        )
+        _verify_files(new_project)
+        _verify_database(new_project)
+        assert "Project mode: new" in new_init
+        assert "Created files: 10" in new_init
+        assert "Created files: 0" in new_second_init
+
         init_output = _run([str(adt), "init", "--no-git"], cwd=root)
         second_init = _run([str(python), "-m", "agentic_framework", "init", "--no-git"], cwd=root)
         _verify_files(root)
         _verify_database(root)
+        assert (root / "AGENTS.md").read_text(encoding="utf-8") == (
+            "# Existing project instructions\n"
+        )
+        assert (root / ".agentic/proposals/AGENTS.md.proposed").is_file()
         report = (root / ".agentic/reports/initialization.md").read_text(encoding="utf-8")
         assert "Django" in report and "JavaScript" in report and "npm" in report
-        assert "Created files: 10" in init_output
+        assert "Project mode: existing" in init_output
+        assert "Created files: 9" in init_output
+        assert "Conflicts: 1" in init_output
         assert "Created files: 0" in second_init
+        assert "Conflicts: 1" in second_init
+        assert "schema_version: 1" in _run(
+            [str(adt), "config", "validate", ".agentic/config.yaml"], cwd=root
+        )
 
         inbox = root / "requirements/inbox"
         (inbox / "product.md").write_text("REQ-001: Sign in\n", encoding="utf-8")
@@ -139,11 +171,13 @@ def run_acceptance(wheel: Path) -> dict[str, object]:
         assert "Status: stopped" in _run([str(adt), "stop"], cwd=root)
         assert "Status: active" in _run([str(adt), "resume"], cwd=root)
         return {
-            "project": "Django + React",
-            "wheel": wheel.name,
+            "artifact": artifact.name,
+            "projects": ["new", "Django + React"],
             "idempotent_initialization": True,
+            "existing_files_preserved": True,
             "codex_configuration": True,
             "antigravity_configuration": True,
+            "configuration_validation": True,
             "state_database": True,
             "requirements_versions": 2,
             "recovery": True,
@@ -152,9 +186,9 @@ def run_acceptance(wheel: Path) -> dict[str, object]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("wheel", type=Path)
+    parser.add_argument("artifact", type=Path)
     arguments = parser.parse_args()
-    print(json.dumps(run_acceptance(arguments.wheel.resolve()), indent=2, sort_keys=True))
+    print(json.dumps(run_acceptance(arguments.artifact.resolve()), indent=2, sort_keys=True))
 
 
 if __name__ == "__main__":
