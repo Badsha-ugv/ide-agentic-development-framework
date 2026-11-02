@@ -14,18 +14,11 @@ lifecycle commands, and Codex/Antigravity project configuration.
 
 ## Installation
 
-The first PyPI release is prepared but has not been published yet. Until it is available, install
-from a checked-out repository:
-
-```bash
-python -m pip install .
-adt --help
-```
-
-After release, the installation command will be:
+Install the latest released version from PyPI:
 
 ```bash
 python -m pip install agentic-development-framework
+adt --help
 ```
 
 ## Development setup
