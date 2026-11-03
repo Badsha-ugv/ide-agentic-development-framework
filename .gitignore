@@ -18,9 +18,8 @@ dist/
 .agentic/
 
 # Local secrets and editor metadata
-.env
-.env.*
 !.env.example
 .idea/
-.vscode/
 
+config.bat
+node_modules
