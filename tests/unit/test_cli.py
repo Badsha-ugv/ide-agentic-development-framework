@@ -2,6 +2,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
+from agentic_framework import __version__
 from agentic_framework.cli import app
 
 runner = CliRunner()
@@ -11,7 +12,7 @@ def test_cli_reports_version() -> None:
     result = runner.invoke(app, ["--version"])
 
     assert result.exit_code == 0
-    assert result.stdout == "adt 0.3.0\n"
+    assert result.stdout == f"adt {__version__}\n"
 
 
 def test_module_cli_has_help() -> None:
