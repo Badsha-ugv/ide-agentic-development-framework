@@ -51,12 +51,13 @@ _DIRECTORIES = (
     "docs/architecture",
     "docs/design",
     "docs/ui-ux",
+    "docs/frontend",
+    "docs/backend",
     "docs/decisions",
     "docs/planning",
     "docs/technical",
     "docs/revisions",
     "docs/reports",
-    "design-prototype",
     "tests",
 )
 
@@ -75,8 +76,10 @@ This project uses the Agentic Development Framework (ADF).
   and run `adt stage complete`. The CLI persists state; the IDE agent performs the work.
 - Never treat successful `adt continue` output as completion or stage advancement.
 - Do not claim a task or phase is complete until its required checks pass.
-- Treat the UI/UX prototype as the final visual specification: inspect actual Figma/screenshots,
-  browser-test all pages and viewports, preserve revisions, and wait for explicit design approval.
+- Build the complete production frontend before backend work: verify its environment, inspect actual
+  Figma/screenshots, browser-test all pages and viewports, and wait for explicit frontend approval.
+- Keep frontend and backend separate until the API integration stage. Never create a disposable
+  design prototype or silently simplify an approved visual reference.
 """
 
 _REQUIREMENTS_README = """# Project requirements

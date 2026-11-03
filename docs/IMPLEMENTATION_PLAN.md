@@ -15,7 +15,7 @@ Each phase depends on passing verification for the preceding phase.
 7. **IDE adapters** — verified Codex, Antigravity, and VS Code configuration generators.
 8. **Engineering integrations** — safe Git wrapper, Docker detection/templates, CI templates,
    and documentation maintenance.
-9. **Existing project and design workflows** — repository analysis, Figma boundary, prototype
+9. **Existing project and design workflows** — repository analysis, Figma boundary, production frontend
    generation workflow, and implementation handoff.
 10. **Acceptance and release** — end-to-end verification, security review, package builds,
     installation test, example project, and release documentation.

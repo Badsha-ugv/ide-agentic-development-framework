@@ -7,7 +7,7 @@ The project is being delivered incrementally. The current implementation provide
 installable package, strict configuration validation, structured logging, safe project
 initialization, immutable requirements versioning, SQLite workflow state, recovery checkpoints,
 lifecycle commands, structured stage execution contracts, artifact validation, approval history,
-Codex/Antigravity project configuration, and a browser-verified final visual prototype workflow.
+Codex/Antigravity project configuration, and a browser-verified frontend-first delivery workflow.
 
 ## Requirements
 
@@ -112,16 +112,18 @@ revisions, records dimensions and contextual folder hints, and updates
 `docs/ui-ux/screenshot-reference-analysis.md` without modifying originals. Requirements ingestion
 also performs this synchronization.
 
-## UI/UX final visual workflow
+## Frontend-first visual workflow
 
-The `ui_ux_design` stage accepts authenticated Figma MCP context, generated HTML/CSS/Tailwind
-design, screenshot references, or a combination. Its prototype is the final visual source of truth,
-not a preliminary wireframe. The stage requires a design system, complete page and role inventory,
-responsive and interactive states, immutable prototype versions, and browser evidence for desktop,
-tablet, and mobile rendering. Structured evidence is validated before completion.
+The `ui_ux_design` stage now builds the complete production frontend—there is no disposable design
+prototype. It accepts a Figma URL from requirements, recursively discovered screenshots, a generated
+design direction, or a combination. Before implementation it verifies the chosen frontend stack,
+package manager, runtime, dependencies, and production build. The result must be modern, accessible,
+responsive, fully interactive, and visually faithful to supplied references without unapproved
+deviations.
 
-The following `design_review` stage always waits for explicit human approval. Frontend work must
-follow the approved prototype and produce design-reference traceability. See
+The following `design_review` stage reviews the actual frontend and always waits for explicit human
+approval. Revisions update that production frontend. Backend implementation begins only afterward,
+followed by frontend/backend API integration. See
 [`docs/UI_UX_WORKFLOW.md`](docs/UI_UX_WORKFLOW.md).
 
 ## Runtime state and recovery

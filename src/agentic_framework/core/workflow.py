@@ -217,7 +217,7 @@ class WorkflowService:
         if stale:
             raise StateError("registered outputs changed; register them again: " + ", ".join(stale))
         if stage in {"ui_ux_design", "design_review"}:
-            self._validate_design_evidence()
+            self._validate_frontend_evidence(stage)
         return [path.relative_to(self.project_root).as_posix() for path in files]
 
     def _read_evidence(self, relative: str) -> dict[str, Any]:
@@ -225,13 +225,27 @@ class WorkflowService:
         try:
             value = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-            raise StateError(f"invalid structured design evidence {relative}: {exc}") from exc
+            raise StateError(f"invalid structured workflow evidence {relative}: {exc}") from exc
         if not isinstance(value, dict):
-            raise StateError(f"structured design evidence must be an object: {relative}")
+            raise StateError(f"structured workflow evidence must be an object: {relative}")
         return value
 
-    def _validate_design_evidence(self) -> None:
-        inputs = self._read_evidence("docs/ui-ux/design-inputs.json")
+    def _safe_existing_file(self, relative_value: str, *, within: Path | None = None) -> Path:
+        relative = Path(relative_value)
+        resolved = (self.project_root / relative).resolve()
+        allowed = (within or self.project_root).resolve()
+        if (
+            relative.is_absolute()
+            or ".." in relative.parts
+            or not resolved.is_relative_to(allowed)
+            or not resolved.is_file()
+            or resolved.is_symlink()
+        ):
+            raise StateError(f"evidence references an unsafe or missing file: {relative_value}")
+        return resolved
+
+    def _validate_frontend_evidence(self, stage: str) -> None:
+        inputs = self._read_evidence("docs/frontend/design-inputs.json")
         methods = inputs.get("methods")
         supported = set(CONTRACT_BY_ID["ui_ux_design"].supported_design_inputs)
         if (
@@ -245,9 +259,17 @@ class WorkflowService:
             )
         if "figma_mcp" in methods:
             figma = inputs.get("figma")
-            if not isinstance(figma, dict) or figma.get("status") != "inspected":
+            if (
+                not isinstance(figma, dict)
+                or figma.get("status") != "inspected"
+                or not isinstance(figma.get("url"), str)
+                or not figma["url"].startswith("https://")
+                or not isinstance(figma.get("source_requirement"), str)
+                or not figma["source_requirement"].strip()
+            ):
                 raise StateError(
-                    "Figma is selected but authenticated MCP inspection is not recorded; "
+                    "Figma is selected but its requirement source, URL, and authenticated MCP "
+                    "inspection are not recorded; "
                     "record the blocker instead of claiming completion"
                 )
         if "screenshots" in methods:
@@ -258,10 +280,56 @@ class WorkflowService:
                     "screenshot design input is selected but the screenshot manifest is empty"
                 )
 
-        evidence = self._read_evidence("docs/ui-ux/browser-verification.json")
+        implementation = self._read_evidence("docs/frontend/implementation-manifest.json")
+        frontend_root_value = implementation.get("frontend_root")
+        if not isinstance(frontend_root_value, str) or not frontend_root_value.strip():
+            raise StateError("frontend implementation manifest must identify frontend_root")
+        frontend_root_relative = Path(frontend_root_value)
+        frontend_root = (self.project_root / frontend_root_relative).resolve()
+        if (
+            frontend_root_relative.is_absolute()
+            or ".." in frontend_root_relative.parts
+            or not frontend_root.is_relative_to(self.project_root)
+            or not frontend_root.is_dir()
+            or frontend_root.is_symlink()
+        ):
+            raise StateError("frontend_root must be a safe existing project directory")
+        stack = implementation.get("stack")
+        if (
+            not isinstance(stack, dict)
+            or not stack
+            or any(not isinstance(value, str) or not value.strip() for value in stack.values())
+        ):
+            raise StateError("frontend implementation manifest must document the selected stack")
+        if implementation.get("environment_verified") is not True:
+            raise StateError("frontend environment verification has not passed")
+        if implementation.get("build_passed") is not True:
+            raise StateError("frontend production build has not passed")
+        for key in ("install_command", "build_command"):
+            value = implementation.get(key)
+            if not isinstance(value, str) or not value.strip():
+                raise StateError(f"frontend implementation manifest must record {key}")
+        source_files = implementation.get("source_files")
+        if not isinstance(source_files, list) or not source_files:
+            raise StateError("frontend implementation manifest must list production source_files")
+        registered = {item["path"] for item in self.store.artifacts(stage)}
+        for source in source_files:
+            if not isinstance(source, str):
+                raise StateError("frontend source file paths must be strings")
+            resolved = self._safe_existing_file(source, within=frontend_root)
+            relative = resolved.relative_to(self.project_root).as_posix()
+            if relative not in registered:
+                raise StateError(
+                    f"frontend source file is not registered for {stage}: {relative}"
+                )
+
+        evidence = self._read_evidence("docs/frontend/browser-verification.json")
         pages = evidence.get("pages")
         if evidence.get("passed") is not True or not isinstance(pages, list) or not pages:
-            raise StateError("browser verification must pass and include every prototype page")
+            raise StateError("browser verification must pass and include every frontend page")
+        console_errors = evidence.get("console_errors")
+        if not isinstance(console_errors, list) or console_errors:
+            raise StateError("frontend browser verification must record zero console errors")
         required_viewports = {"desktop", "tablet", "mobile"}
         for page in pages:
             if not isinstance(page, dict) or not isinstance(page.get("id"), str):
@@ -277,27 +345,28 @@ class WorkflowService:
                 )
             if page.get("interactions_passed") is not True:
                 raise StateError(f"interactive controls did not pass for page: {page['id']}")
+            if page.get("accessibility_passed") is not True:
+                raise StateError(f"accessibility checks did not pass for page: {page['id']}")
+            states = page.get("states_verified")
+            if not isinstance(states, list) or not states or any(
+                not isinstance(state, str) or not state.strip() for state in states
+            ):
+                raise StateError(f"verified UI states are missing for page: {page['id']}")
+            if page.get("reference_match") is not True:
+                raise StateError(f"frontend does not match its approved reference: {page['id']}")
+            deviations = page.get("unapproved_deviations")
+            if not isinstance(deviations, list) or deviations:
+                raise StateError(f"unapproved reference deviations remain for page: {page['id']}")
             screenshots = page.get("screenshots")
             if not isinstance(screenshots, list) or not screenshots:
                 raise StateError(f"rendered screenshots are missing for page: {page['id']}")
             for screenshot in screenshots:
                 if not isinstance(screenshot, str):
                     raise StateError(f"invalid rendered screenshot path for page: {page['id']}")
-                relative = Path(screenshot)
-                rendered = (self.project_root / relative).resolve()
-                allowed = (
-                    self.project_root / "design-prototype/verification-screenshots"
-                ).resolve()
-                if (
-                    relative.is_absolute()
-                    or ".." in relative.parts
-                    or not rendered.is_relative_to(allowed)
-                    or not rendered.is_file()
-                    or rendered.is_symlink()
-                ):
-                    raise StateError(
-                        f"browser evidence references an unsafe or missing screenshot: {screenshot}"
-                    )
+                self._safe_existing_file(
+                    screenshot,
+                    within=self.project_root / "docs/frontend/verification-screenshots",
+                )
 
     def complete_stage(self) -> dict[str, Any]:
         """Validate and complete the current stage, stopping at approval gates."""

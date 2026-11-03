@@ -23,7 +23,8 @@ Revision snapshots, artifact metadata revisions, approval state, event history, 
 survive process and IDE restarts. The normal project documents remain the editable working copy;
 the snapshot is the immutable review-history evidence.
 
-For `design_review`, revision work must also create a new version below
-`design-prototype/versions/`, update the UI/UX revision history, and rerun browser verification for
-all affected pages and viewports. The final visual prototype is never automatically approved, and
-frontend implementation cannot begin until `adt approve design_review` succeeds.
+For `design_review`, revision work changes the actual production frontend, documents the intentional
+decision in `docs/frontend/revision-history.md`, registers the new source bytes, and reruns browser
+verification for affected pages, states, and viewports. The frontend is never automatically
+approved, and backend planning or implementation cannot begin until
+`adt approve design_review` succeeds.

@@ -323,7 +323,8 @@ class ScreenshotManager:
         lines.extend(
             [
                 "",
-                "> Folder-derived labels are contextual hints only. The UI/UX agent must inspect "
+                "> Folder-derived labels are contextual hints only. The frontend agent must "
+                "inspect "
                 "the actual images before recording conclusions.",
                 _GENERATED_END,
             ]
@@ -338,7 +339,7 @@ class ScreenshotManager:
 
 ## Visual patterns and reusable components
 
-To be completed by the UI/UX agent after visual inspection.
+To be completed by the frontend agent after visual inspection.
 
 ## Missing pages and responsive states
 
@@ -348,9 +349,9 @@ To be completed against approved requirements and the page inventory.
 
 Record evidence, confidence, and questions that materially affect usability.
 
-## Reference-to-generated-page traceability
+## Reference-to-frontend traceability
 
-Map each reference to the prototype pages and components that use it.
+Map each reference to the production frontend pages and components that use it.
 """
         if self.analysis_path.is_file():
             existing = self.analysis_path.read_text(encoding="utf-8")

@@ -30,21 +30,31 @@ def test_generates_valid_codex_antigravity_and_canonical_configuration(tmp_path:
     assert skill.startswith("---\nname: agentic-commands\n")
     assert "IDE agent performs reasoning and artifact creation" in rules
     assert "adt stage complete" in skill
+    assert "## Existing-project discipline" in skill
+    assert "## Production frontend execution" in skill
+    assert "## Backend and integration sequence" in skill
+    assert "actual production frontend" in skill
+    assert "report discovered" in rules
+    assert "adapter boundary" in rules
     assert "name: continue" in continue_skill
     assert "does not advance" in continue_skill
     assert "adt stage task" in adf_skill
     assert "does not assume an undocumented" in codex_note
-    assert workflow["schema_version"] == 3
+    assert workflow["schema_version"] == 4
     assert len(workflow["stages"]) == 19
     assert workflow["stages"][5]["approval_required"] is True
     assert contracts["execution_model"] == "ide_agent"
-    assert contracts["schema_version"] == 3
+    assert contracts["schema_version"] == 4
     assert contracts["stages"][1]["expected_outputs"][0] == (
         "docs/discovery/project-overview.md"
     )
     assert len(registry["agents"]) == 11
-    ui_agent = next(item for item in registry["agents"] if item["id"] == "ui_ux_designer")
-    assert "final visual prototype" in ui_agent["responsibilities"][0]
+    frontend = next(item for item in registry["agents"] if item["id"] == "frontend_developer")
+    assert "complete production frontend" in frontend["responsibilities"][1]
+    backend = next(item for item in registry["agents"] if item["id"] == "backend_developer")
+    integration = next(item for item in registry["agents"] if item["id"] == "integration_engineer")
+    assert "adapter boundary" in backend["responsibilities"][1]
+    assert "frontend mocks" in integration["responsibilities"][0]
 
 
 def test_adapter_files_are_idempotent(tmp_path: Path) -> None:

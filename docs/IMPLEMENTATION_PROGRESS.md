@@ -159,3 +159,18 @@ Status: complete; included in the 0.3.0 release candidate (2026-11-03)
 - [x] Frontend approved-design traceability requirement
 - [x] Focused unit, integration, and acceptance coverage
 
+## Frontend-first workflow revision
+
+Status: implemented and under verification (2026-11-03)
+
+- [x] Stable stage IDs retained for existing runtime compatibility
+- [x] Disposable design-prototype phase removed from fresh projects and execution contracts
+- [x] Figma requirement links, recursive screenshots, and generated frontend modes retained
+- [x] Frontend technology, dependency, environment, and production-build evidence required first
+- [x] Complete production frontend built and reviewed before backend implementation
+- [x] Exact visual-reference matching required unless a revision explicitly changes the decision
+- [x] Modern interaction, state, responsiveness, accessibility, and performance guidance strengthened
+- [x] Actual frontend source files registered and hash-validated at frontend review gates
+- [x] Backend implementation and frontend/backend API integration separated into ordered stages
+- [x] Full regression verification (`ruff check .`; 91 tests passed)
+

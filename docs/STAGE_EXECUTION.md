@@ -30,10 +30,10 @@ Facts, assumptions, risks, and open questions must remain distinct. Missing prod
 into the clarification log; the agent must not invent answers. Requirements stages then create
 stable IDs, acceptance criteria, traceability, and the SRS before the requirements approval gate.
 
-Later contracts cover architecture, a Figma-backed, screenshot-informed, or generated final visual
-prototype, development planning, implementation, integration, testing, review, delivery
-validation, documentation, and release review. UI/UX completion requires versioned prototype
-artifacts plus structured browser evidence for all pages, interactions, and desktop, tablet, and
-mobile layouts. `design_review` cannot advance without explicit approval, and implementation must
-produce frontend design-reference traceability. The contract file—not conversational memory—is
-the durable definition of the next work.
+Later contracts cover architecture; environment setup and complete production-frontend delivery
+from Figma, screenshots, or a generated direction; frontend review; backend planning and
+implementation; API integration; testing; review; delivery validation; documentation; and release
+review. Frontend completion requires registered production sources plus structured build and browser
+evidence for every page, interaction, state, and viewport. `design_review` cannot advance without
+explicit approval, and backend work cannot begin early. The contract file—not conversational
+memory—is the durable definition of the next work.

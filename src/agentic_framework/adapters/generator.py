@@ -31,8 +31,15 @@ read the shared command skill and
 `.agentic/execution-contracts.yaml`; do not merely run a lifecycle command and report its output.
 The IDE agent performs reasoning and artifact creation while `adt` persists execution, artifacts,
 validation, approvals, and recovery. Never bypass approval gates or overwrite unrelated changes.
-For the UI/UX stage, treat the browser-verified prototype as the final visual specification, sync
-and inspect screenshot references, and require explicit approval before frontend implementation.
+In an existing application, detect and follow its actual architecture, tools, conventions, Git
+state, and active ADF artifacts; report discovered defects and conflicts instead of silently
+ignoring them. For the frontend stage, inspect actual Figma/screenshot references, verify the
+environment, and build the complete production frontend with accessible, responsive, meaningful
+interactions. Supplied
+references govern presentation and must have no unapproved visual deviation. Do not create a
+disposable prototype. Require explicit frontend approval before backend planning or implementation.
+Build the backend separately, then connect it through the frontend adapter boundary during the API
+integration stage. A custom `/adf` request may refine current-stage work but cannot skip this order.
 """
 
 _CODEX_NOTE = """# Codex adapter
@@ -80,7 +87,7 @@ def _workflow() -> str:
                 "checkpoint_policy": "on_completion",
             }
         )
-    return _yaml({"schema_version": 3, "name": "default", "stages": stages})
+    return _yaml({"schema_version": 4, "name": "default", "stages": stages})
 
 
 def _registry() -> str:
@@ -92,9 +99,9 @@ def _registry() -> str:
         verification = ["run relevant checks"]
         if agent_id == "ui_ux_designer":
             responsibilities = [
-                "Create the complete high-fidelity final visual prototype",
+                "Analyze visual references and define a production-ready design system",
                 "Analyze Figma, screenshots, and approved requirements without inventing evidence",
-                "Verify every page, viewport, and interaction in a browser",
+                "Support exact visual comparison and intentional revision decisions",
             ]
             required_inputs = [
                 "approved requirements and architecture",
@@ -102,9 +109,8 @@ def _registry() -> str:
                 "optional authenticated Figma design context",
             ]
             expected_outputs = [
-                "versioned interactive prototype",
                 "design system and page inventory",
-                "browser verification evidence",
+                "visual reference analysis",
             ]
             verification = [
                 "inspect desktop, tablet, and mobile rendering",
@@ -113,12 +119,35 @@ def _registry() -> str:
             ]
         elif agent_id == "frontend_developer":
             responsibilities = [
-                "Implement the explicitly approved final visual prototype faithfully",
-                "Preserve approved layouts, components, interactions, and responsive behavior",
+                "Verify the frontend stack and environment before implementation",
+                "Build the complete production frontend before backend implementation",
+                "Match approved references exactly and deliver modern, accessible interactions",
             ]
-            required_inputs = ["approved design prototype and browser evidence"]
-            expected_outputs = ["frontend design-reference traceability"]
-            verification = ["compare production rendering with approved prototype screenshots"]
+            required_inputs = ["approved requirements, architecture, and visual references"]
+            expected_outputs = ["production frontend and browser verification evidence"]
+            verification = [
+                "prove environment setup and production build before completion",
+                "compare actual frontend rendering with every approved reference",
+                "test pages, states, controls, accessibility, console, and responsive layouts",
+            ]
+        elif agent_id == "backend_developer":
+            responsibilities = [
+                "Implement backend services from approved API and architecture contracts",
+                "Preserve the approved frontend and its adapter boundary",
+                "Implement persistence, validation, security, migrations, and failure behavior",
+            ]
+            required_inputs = ["approved backend plan, architecture, and frontend adapter needs"]
+            expected_outputs = ["tested backend implementation and traceability manifest"]
+            verification = ["run backend unit, integration, migration, and security checks"]
+        elif agent_id == "integration_engineer":
+            responsibilities = [
+                "Replace frontend mocks through the documented adapter boundary",
+                "Verify API, authentication, validation, and failure-state behavior end to end",
+                "Prevent silent visual drift during frontend/backend integration",
+            ]
+            required_inputs = ["approved frontend, verified backend, and API integration plan"]
+            expected_outputs = ["API integration report with reproducible evidence"]
+            verification = ["run backend, frontend, API, and browser integration checks"]
         agents.append(
             {
                 "id": agent_id,

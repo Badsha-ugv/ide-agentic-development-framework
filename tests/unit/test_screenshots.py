@@ -94,7 +94,7 @@ def test_recursively_versions_screenshots_without_changing_originals(tmp_path: P
     analysis = first.analysis_path
     analysis.write_text(
         analysis.read_text(encoding="utf-8").replace(
-            "To be completed by the UI/UX agent after visual inspection.",
+            "To be completed by the frontend agent after visual inspection.",
             "Compact sidebar and dense data table.",
         ),
         encoding="utf-8",

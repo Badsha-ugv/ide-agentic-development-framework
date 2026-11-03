@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+### Changed
+
+- Removed the disposable design-prototype step: the existing UI/UX stage now verifies the frontend
+  toolchain and builds the complete production frontend before backend work begins.
+- Figma links from requirements, recursively discovered screenshots, and generated frontend design
+  remain supported, with exact-reference, accessibility, interaction, responsive, and state checks.
+- Workflow order is now frontend implementation and approval, backend planning and implementation,
+  then explicit frontend/backend API integration.
+
+### Added
+
+- Structured frontend implementation-manifest validation for environment, production build, actual
+  registered source files, browser evidence, console errors, accessibility, and reference deviations.
+
 ## 0.3.0 - 2026-11-03
 
 ### Added

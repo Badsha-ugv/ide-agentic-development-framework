@@ -1,81 +1,76 @@
-# UI/UX Design & Final Visual Prototype
+# Frontend-first visual workflow
 
-ADF treats the interactive prototype as the final visual specification for frontend
-implementation. It is not a wireframe or disposable mockup. The stable workflow stage IDs remain
-`ui_ux_design` and `design_review`, so existing runtime state remains compatible.
+ADF builds the real production frontend before backend implementation. There is no disposable
+design-prototype phase and no later frontend rebuild. The stable stage IDs remain `ui_ux_design`
+and `design_review` so existing project state stays compatible, but they now mean complete frontend
+implementation and production-frontend review.
 
-## Design inputs
+## Three design-input modes
 
-The UI/UX agent records one or more methods in `docs/ui-ux/design-inputs.json`:
+The frontend agent records one or more methods in `docs/frontend/design-inputs.json`:
 
-- `figma_mcp`: an authenticated Figma MCP connection was used to inspect the supplied file or
-  frame, including its components, styles, variables, assets, and visual screenshots;
-- `generated_prototype`: the agent established a design system and generated the final visual
-  direction from approved requirements; and
-- `screenshots`: the agent visually inspected references discovered below
-  `requirements/screenshots/`.
+- `figma_mcp`: a Figma URL was supplied in the requirements and inspected through an authenticated
+  integration, including components, styles, variables, assets, interactions, and rendered context;
+- `screenshots`: the agent opened and inspected references anywhere below
+  `requirements/screenshots/`; and
+- `generated_frontend`: no external design was supplied, so the agent created a cohesive modern
+  visual system directly in the production frontend.
 
-Methods may be combined. Selecting Figma without recording successful authenticated inspection
-blocks completion. An unavailable MCP server or failed authentication must be reported as a
-blocker; generated claims cannot substitute for design context.
+Methods may be combined. Figma claims require the original HTTPS URL, its source requirement, and
+successful authenticated inspection. If access fails, the stage records a blocker. Metadata alone
+never counts as visual inspection.
 
-## Screenshot references
+## Environment first
 
-`adt init` creates suggested desktop, mobile, role, and general reference folders. These are
-conveniences, not a schema. Any additional nesting is supported. PNG, JPG, JPEG, and WEBP files
-are discovered recursively with:
+Before writing UI code, the agent inspects the architecture and existing project, identifies the
+frontend root, framework, language, styling system, package manager, runtime, and commands, installs
+the required dependencies, and proves the environment can produce a production build. The result is
+recorded in `docs/frontend/technology-and-environment.md` and
+`docs/frontend/implementation-manifest.json`.
 
-```bash
-adt requirements screenshots
-```
+Frontend and backend remain separate. The frontend uses typed mock data or an adapter boundary until
+the integration stage; it does not wait for, implement, or directly couple itself to unfinished
+backend code.
 
-ADF reads image dimensions, hashes original bytes, records contextual folder hints, writes
-`requirements/screenshots/manifest.json`, and maintains immutable copies under the hidden
-`requirements/screenshots/.versions/` history. It never modifies or deletes originals. A changed
-reference creates a new revision; unchanged references do not.
+## Production frontend quality bar
 
-The generated inventory block in `docs/ui-ux/screenshot-reference-analysis.md` is updated without
-overwriting the agent-authored analysis below it. Folder names are only hints. The agent must open
-and inspect the images, record visual patterns and missing screens, and trace references to
-generated pages.
+The stage implements every approved page, role, journey, responsive layout, and relevant loading,
+empty, success, validation, and error state. It uses reusable components and tokens, meaningful
+information hierarchy, deliberate typography and spacing, coherent color and depth, realistic
+content, restrained purposeful motion, and fast perceived performance.
 
-Requirements ingestion also synchronizes screenshot references. Preparing `ui_ux_design` or
-`design_review` performs the same synchronization, so newly added references enter the current
-design cycle automatically.
+Every visible control must work. Semantic HTML, keyboard operation, visible focus, contrast,
+reduced-motion behavior, clear feedback, and responsive desktop/tablet/mobile layouts are required.
+Generic template screens, placeholder controls, inconsistent one-off styling, and decorative actions
+do not satisfy the stage.
 
-## Required final-design evidence
+When Figma or screenshots are supplied, “same” means visually faithful implementation of layout,
+dimensions, spacing, typography, colors, assets, states, and interactions, allowing only necessary
+responsive adaptation. Any difference must be an explicitly approved revision or a documented
+technical constraint—never a silent simplification. A later revision may intentionally change the
+reference decision while preserving unrelated approved work.
 
-The design contract requires:
+## Evidence and approval
 
-- a page and role inventory;
-- the complete design system;
-- screenshot analysis and missing-screen decisions;
-- the high-fidelity interactive prototype;
-- at least one immutable prototype version;
-- revision history;
-- rendered verification screenshots; and
-- structured browser evidence in `docs/ui-ux/browser-verification.json`.
+`adt requirements screenshots` recursively catalogs supported images, preserves immutable revisions,
+and updates `docs/ui-ux/screenshot-reference-analysis.md` without changing originals.
 
-Browser evidence must mark the run as passed and list every page with desktop, tablet, and mobile
-coverage, passing interactions, and project-relative rendered screenshot paths below
-`design-prototype/verification-screenshots/`. `adt stage complete` validates this evidence instead
-of accepting file existence alone.
+The frontend stage also requires a page inventory, design system, source-file manifest, reference
+comparison, revision history, rendered verification screenshots, and structured browser evidence in
+`docs/frontend/browser-verification.json`. Validation checks:
 
-Visible controls must perform meaningful actions. Browser verification covers navigation,
-responsive behavior, states, forms, filters, dialogs, and other interactions relevant to the
-approved requirements.
+- the documented environment and production build passed;
+- listed source files exist below the frontend root and are registered with current hashes;
+- every page passed desktop, tablet, and mobile checks;
+- interactions and accessibility checks passed and UI states were exercised;
+- browser console errors and unapproved reference deviations are empty; and
+- verification images exist below `docs/frontend/verification-screenshots/`.
 
-## Review, revisions, and frontend handoff
+`design_review` presents the actual production frontend and always stops for explicit approval.
+`adt revise design_review "FEEDBACK"` preserves the reviewed snapshot, applies the requested changes
+to production code, updates the revision evidence, and reruns verification. Only
+`adt approve design_review` permits backend planning and implementation.
 
-`design_review` presents the complete page inventory, preview instructions, design system,
-responsive and interaction evidence, issues, and revision history. It always stops at
-`awaiting_approval`. Only explicit `adt approve design_review` advances the workflow.
-
-`adt revise design_review "FEEDBACK"` preserves the reviewed artifact snapshot. The agent updates
-affected screens without discarding unrelated approved decisions, creates a new prototype version,
-reruns browser verification, registers the new bytes, and submits the same review stage again.
-
-The implementation stage consumes the approved prototype and requires
-`docs/reports/frontend-design-traceability.md`. Production frontend work must preserve approved
-layouts, components, visual hierarchy, interactions, and responsive behavior, then compare its
-rendering with the approved prototype rather than independently redesigning it.
+After approval, ADF plans and builds the backend without redesigning the frontend. The following
+integration stage replaces mocks through the frontend adapter boundary and verifies API contracts,
+authentication, validation, and loading/empty/success/error behavior end to end.

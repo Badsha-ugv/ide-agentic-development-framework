@@ -207,149 +207,186 @@ CONTRACTS = (
     ),
     _contract(
         "ui_ux_design",
-        "UI/UX Design & Final Visual Prototype",
-        "Produce the complete, high-fidelity visual specification that frontend work must follow.",
+        "Frontend environment & complete UI implementation",
+        "Configure and build the complete production frontend before backend implementation.",
         prerequisites=("architecture_review",),
         inputs=(
             "docs/requirements/*.md",
             "docs/architecture/*.md",
             "requirements/screenshots/manifest.json",
             "requirements/screenshots/**",
-            "existing project design assets",
-            "optional Figma file or frame URL",
+            "existing project design assets and frontend source",
+            "optional Figma file or frame URL recorded in requirements",
         ),
-        agent="ui_ux_designer",
+        agent="frontend_developer",
         responsibilities=(
             "Inventory every required page, user role, journey, state, and responsive layout.",
-            "Treat the interactive prototype as the final visual source of truth, not a wireframe.",
-            "Establish or faithfully preserve a coherent design system before building pages.",
-            "Preserve traceability from requirements and visual references to generated pages.",
+            "Verify the selected frontend stack, package manager, runtime, and environment first.",
+            "Build the actual maintainable production frontend; never create a disposable "
+            "prototype.",
+            "Reproduce approved Figma or screenshot references without unapproved visual "
+            "deviation.",
+            "Create an excellent modern interface when no external visual reference is supplied.",
         ),
         instructions=(
             "Run adt requirements screenshots before analysis and inspect every discovered image.",
-            "Record the selected Figma, generated-prototype, and screenshot methods in "
-            "docs/ui-ux/design-inputs.json; methods may be combined.",
+            "Record the selected Figma, screenshot, and generated-frontend methods in "
+            "docs/frontend/design-inputs.json; methods may be combined.",
             "For Figma, use an available authenticated MCP integration, retrieve design context "
             "and screenshots, and block honestly when access or authentication fails.",
-            "When no external source exists, propose the visual direction and design system for "
-            "human review before generating every page.",
-            "Build complete role-aware pages with realistic data, responsive layouts, reusable "
-            "components, and loading, empty, success, validation, and error states.",
-            "Give every visible control meaningful behavior; do not ship decorative controls.",
-            "Run the prototype in a browser, inspect all pages at desktop, tablet, and mobile "
-            "sizes, exercise interactions, capture rendered screenshots, fix defects, and repeat.",
-            "Create an immutable prototype version under design-prototype/versions and update "
-            "the revision history without overwriting the only prior approved version.",
+            "Inspect the architecture and existing repository, select its required frontend stack, "
+            "install dependencies with its package manager, and prove the environment and build "
+            "work.",
+            "Keep frontend and backend separate. Use typed mock data or an adapter boundary in "
+            "this stage; do not implement the backend or couple components directly to unfinished "
+            "APIs.",
+            "For supplied references, match layout, dimensions, spacing, typography, colors, "
+            "assets, responsive behavior, states, and interactions exactly except for documented "
+            "approved revisions.",
+            "When no external reference exists, establish a cohesive modern design system with "
+            "strong information hierarchy, typography, spacing, color, depth, and restrained "
+            "purposeful motion.",
+            "Build complete role-aware production pages with realistic data, reusable components, "
+            "design tokens, responsive layouts, and loading, empty, success, validation, and error "
+            "states.",
+            "Make every control meaningful and accessible: semantic structure, keyboard operation, "
+            "visible focus, sufficient contrast, reduced-motion support, and clear feedback are "
+            "mandatory.",
+            "Optimize rendering, assets, navigation, and perceived performance; avoid generic "
+            "template-like screens, placeholder content, decorative controls, and inconsistent "
+            "one-off styling.",
+            "Run the actual frontend in a browser at desktop, tablet, and mobile sizes, exercise "
+            "all interactions and states, compare it with every reference, capture evidence, fix "
+            "defects, and repeat.",
         ),
         outputs=(
-            "docs/design/ui-ux-specification.md",
-            "docs/ui-ux/design-inputs.json",
-            "docs/ui-ux/page-inventory.md",
-            "docs/ui-ux/design-system.md",
+            "docs/frontend/technology-and-environment.md",
+            "docs/frontend/design-inputs.json",
+            "docs/frontend/page-inventory.md",
+            "docs/frontend/design-system.md",
+            "docs/frontend/implementation-manifest.json",
             "docs/ui-ux/screenshot-reference-analysis.md",
-            "docs/ui-ux/browser-verification.json",
-            "docs/ui-ux/revision-history.md",
-            "design-prototype/index.html",
-            "design-prototype/versions/*/index.html",
-            "design-prototype/verification-screenshots/**",
+            "docs/frontend/browser-verification.json",
+            "docs/frontend/reference-comparison.md",
+            "docs/frontend/revision-history.md",
+            "docs/frontend/verification-screenshots/**",
         ),
         validation=(
-            "Design-input evidence selects a supported method and never claims unavailable Figma "
-            "context was inspected.",
+            "Frontend environment and production build verification pass for the documented stack.",
+            "Design-input evidence selects supported methods and never claims unavailable Figma "
+            "context.",
+            "The implementation manifest identifies existing production source files registered "
+            "for review.",
             "Page inventory covers approved roles, requirements, states, and responsive variants.",
-            "The prototype uses a consistent documented design system and reusable components.",
-            "Every visible interactive control has meaningful browser-tested behavior.",
-            "Browser evidence passes every page at desktop, tablet, and mobile viewports and links "
-            "to captured rendered screenshots.",
-            "A versioned prototype and revision history preserve prior visual decisions.",
+            "Every visible control has meaningful, accessible, browser-tested behavior.",
+            "Browser evidence passes every page at desktop, tablet, and mobile with no console "
+            "errors, links to captured screenshots, and records no unapproved reference "
+            "deviations.",
         ),
         completion=(
-            "Every required output and rendered verification screenshot is registered with its "
-            "current SHA-256 digest.",
-            "Structured design-input and browser-verification evidence passes validation.",
-            "The final prototype is complete enough for faithful production implementation.",
+            "Every required document, production frontend source file, and verification screenshot "
+            "is registered with its current SHA-256 digest.",
+            "Structured design-input, implementation, and browser evidence passes validation.",
+            "The complete production frontend is ready for explicit visual and functional review.",
         ),
-        design_inputs=("figma_mcp", "generated_prototype", "screenshots"),
+        design_inputs=("figma_mcp", "generated_frontend", "screenshots"),
     ),
     _contract(
         "design_review",
-        "Final visual prototype review",
-        "Present the complete browser-verified prototype for explicit human approval.",
+        "Production frontend review",
+        "Present the complete browser-verified production frontend for explicit human approval.",
         prerequisites=("ui_ux_design",),
-        inputs=("docs/design/*.md", "docs/ui-ux/**", "design-prototype/**"),
+        inputs=(
+            "docs/frontend/**",
+            "docs/ui-ux/screenshot-reference-analysis.md",
+            "frontend source",
+        ),
         agent="main_orchestrator",
         instructions=(
             "Present the page inventory, local preview instructions, design system, responsive and "
             "interaction evidence, outstanding issues, and revision history.",
             "Require explicit human approval; never infer it from generated files or silence.",
-            "For revision feedback, preserve unrelated approved decisions, update affected screens "
-            "consistently, create a new prototype version, and rerun browser verification.",
+            "For revision feedback, update affected production screens consistently, document the "
+            "intentional design change, preserve unrelated decisions, and rerun frontend "
+            "verification.",
         ),
         outputs=(
-            "docs/design/ui-ux-specification.md",
-            "docs/ui-ux/design-inputs.json",
-            "docs/ui-ux/page-inventory.md",
-            "docs/ui-ux/design-system.md",
-            "docs/ui-ux/browser-verification.json",
-            "docs/ui-ux/revision-history.md",
-            "design-prototype/index.html",
-            "design-prototype/versions/*/index.html",
-            "design-prototype/verification-screenshots/**",
+            "docs/frontend/technology-and-environment.md",
+            "docs/frontend/design-inputs.json",
+            "docs/frontend/page-inventory.md",
+            "docs/frontend/design-system.md",
+            "docs/frontend/implementation-manifest.json",
+            "docs/frontend/browser-verification.json",
+            "docs/frontend/reference-comparison.md",
+            "docs/frontend/revision-history.md",
+            "docs/frontend/verification-screenshots/**",
         ),
         validation=(
-            "All final visual prototype evidence remains current and registered.",
+            "All production frontend source and review evidence remains current and registered.",
             "Outstanding issues and assumptions are disclosed for human review.",
-            "No frontend implementation begins before explicit approval is recorded.",
+            "No backend implementation begins before explicit frontend approval is recorded.",
         ),
         approval=True,
     ),
     _contract(
         "development_planning",
-        "Development planning",
-        "Create an executable, dependency-aware delivery plan.",
+        "Backend & API integration planning",
+        "Plan backend implementation and later API integration around the approved frontend.",
         prerequisites=("design_review",),
-        inputs=("docs/requirements/*.md", "docs/architecture/*.md", "docs/design/*.md"),
-        responsibilities=("Separate frontend, backend, integration, and verification work.",),
-        instructions=("Define milestones, tasks, dependencies, tests, and delivery criteria.",),
+        inputs=("docs/requirements/*.md", "docs/architecture/*.md", "docs/frontend/**"),
+        responsibilities=(
+            "Separate backend construction from frontend/API integration and verification.",
+        ),
+        instructions=(
+            "Derive API contracts from approved requirements, architecture, and frontend adapter "
+            "needs.",
+            "Define backend milestones, tasks, migrations, security, tests, integration, and "
+            "delivery criteria.",
+            "Do not redesign or rebuild the approved frontend during backend planning.",
+        ),
         outputs=(
-            "docs/planning/milestones.md",
-            "docs/planning/task-breakdown.md",
-            "docs/planning/testing-plan.md",
-            "docs/planning/integration-plan.md",
+            "docs/planning/backend-implementation-plan.md",
+            "docs/planning/api-integration-plan.md",
+            "docs/planning/backend-testing-plan.md",
         ),
     ),
     _contract(
         "implementation",
-        "Implementation",
-        "Implement approved tasks traceably against requirements and architecture.",
+        "Backend implementation",
+        "Implement and verify the backend independently against approved contracts.",
         prerequisites=("development_planning",),
         inputs=(
             "docs/planning/*.md",
-            "docs/ui-ux/*.md",
-            "docs/ui-ux/*.json",
-            "design-prototype/**",
+            "docs/frontend/implementation-manifest.json",
+            "docs/frontend/page-inventory.md",
         ),
         agent="main_orchestrator",
         instructions=(
-            "Delegate sequential work, run focused tests, and record changed artifacts.",
-            "Implement frontend pages from the approved prototype without independently "
-            "redesigning or simplifying its layouts, components, interactions, or responsiveness.",
-            "Compare production frontend rendering with approved prototype screenshots and record "
-            "requirement, page, component, and visual-reference traceability.",
+            "Implement data, domain, service, API, security, and persistence behavior from the "
+            "plan.",
+            "Run focused backend tests and record requirement and API-contract traceability.",
+            "Do not redesign the approved frontend or bypass its documented adapter boundary.",
         ),
         outputs=(
-            ".agentic/reports/implementation.md",
-            "docs/reports/frontend-design-traceability.md",
+            ".agentic/reports/backend-implementation.md",
+            "docs/backend/implementation-manifest.json",
         ),
     ),
     _contract(
         "integration",
-        "Integration",
-        "Integrate application components and verify their contracts.",
+        "Frontend/backend API integration",
+        "Connect the approved frontend to the verified backend and test end-to-end behavior.",
         prerequisites=("implementation",),
         agent="integration_engineer",
-        instructions=("Run integration checks and document failures and resolutions.",),
-        outputs=("docs/reports/integration.md",),
+        instructions=(
+            "Replace frontend mocks through its adapter boundary without changing approved "
+            "presentation.",
+            "Verify API contracts, authentication, validation, loading, empty, success, and error "
+            "behavior.",
+            "Run integration and browser checks and document failures, fixes, and remaining "
+            "constraints.",
+        ),
+        outputs=("docs/reports/api-integration.md",),
     ),
     _contract(
         "qa_and_testing",
@@ -420,7 +457,7 @@ def contract_document() -> dict[str, Any]:
     """Return the complete versioned stage contract document."""
 
     return {
-        "schema_version": 3,
+        "schema_version": 4,
         "execution_model": "ide_agent",
         "stages": [contract.as_dict() for contract in CONTRACTS],
     }
