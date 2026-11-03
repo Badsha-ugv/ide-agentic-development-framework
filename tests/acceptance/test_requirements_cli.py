@@ -7,6 +7,12 @@ from agentic_framework.cli import app
 runner = CliRunner()
 
 
+def _png(width: int, height: int) -> bytes:
+    return b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\rIHDR" + width.to_bytes(
+        4, "big"
+    ) + height.to_bytes(4, "big")
+
+
 def test_requirements_cli_creates_version_impact_report_and_detects_duplicate(
     tmp_path: Path,
 ) -> None:
@@ -35,3 +41,20 @@ def test_requirements_cli_reports_empty_inbox_without_traceback(tmp_path: Path) 
     assert result.exit_code == 2
     assert "no requirement files found" in result.stderr
     assert "Traceback" not in result.stderr
+
+
+def test_screenshot_cli_discovers_nested_references_and_is_idempotent(tmp_path: Path) -> None:
+    screenshot = tmp_path / "requirements/screenshots/mobile/customer/profile.png"
+    screenshot.parent.mkdir(parents=True)
+    screenshot.write_bytes(_png(390, 844))
+
+    first = runner.invoke(app, ["requirements", "screenshots", "--path", str(tmp_path)])
+    second = runner.invoke(app, ["requirements", "screenshots", "--path", str(tmp_path)])
+
+    assert first.exit_code == 0
+    assert "Published screenshot revision 1" in first.stdout
+    assert "Screenshot files: 1" in first.stdout
+    assert second.exit_code == 0
+    assert "Unchanged screenshot revision 1" in second.stdout
+    assert (tmp_path / "requirements/screenshots/manifest.json").is_file()
+    assert (tmp_path / "docs/ui-ux/screenshot-reference-analysis.md").is_file()

@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from contextlib import closing
 from pathlib import Path
@@ -180,3 +181,117 @@ def test_every_stage_has_a_complete_execution_contract() -> None:
         assert contract.validation_criteria
         assert contract.completion_conditions
         assert contract.failure_behavior
+
+
+def test_ui_ux_contract_is_final_visual_workflow_with_frontend_traceability() -> None:
+    design = next(contract for contract in CONTRACTS if contract.id == "ui_ux_design")
+    review = next(contract for contract in CONTRACTS if contract.id == "design_review")
+    implementation = next(contract for contract in CONTRACTS if contract.id == "implementation")
+
+    assert design.name == "UI/UX Design & Final Visual Prototype"
+    assert design.supported_design_inputs == (
+        "figma_mcp",
+        "generated_prototype",
+        "screenshots",
+    )
+    assert "docs/ui-ux/screenshot-reference-analysis.md" in design.expected_outputs
+    assert "docs/ui-ux/browser-verification.json" in design.expected_outputs
+    assert "design-prototype/versions/*/index.html" in design.expected_outputs
+    assert review.approval_required is True
+    assert "docs/reports/frontend-design-traceability.md" in implementation.expected_outputs
+
+
+def test_design_evidence_requires_real_browser_and_figma_verification(tmp_path: Path) -> None:
+    initialize_project(tmp_path, initialize_git=False)
+    service = WorkflowService(tmp_path)
+    service.store.update_workflow("active", "ui_ux_design")
+    service.continue_workflow()
+    evidence_dir = tmp_path / "docs/ui-ux"
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    screenshots = tmp_path / "design-prototype/verification-screenshots"
+    screenshots.mkdir(parents=True)
+    rendered = screenshots / "dashboard-desktop.png"
+    rendered.write_bytes(b"rendered browser evidence")
+    (evidence_dir / "design-inputs.json").write_text(
+        json.dumps({"methods": ["generated_prototype"]}), encoding="utf-8"
+    )
+    verification = {
+        "passed": True,
+        "pages": [
+            {
+                "id": "dashboard",
+                "viewports": ["desktop", "tablet", "mobile"],
+                "interactions_passed": True,
+                "screenshots": [
+                    "design-prototype/verification-screenshots/dashboard-desktop.png"
+                ],
+            }
+        ],
+    }
+    (evidence_dir / "browser-verification.json").write_text(
+        json.dumps(verification), encoding="utf-8"
+    )
+
+    service._validate_design_evidence()
+
+    (evidence_dir / "design-inputs.json").write_text("[]", encoding="utf-8")
+    with pytest.raises(StateError, match="must be an object"):
+        service._validate_design_evidence()
+    (evidence_dir / "design-inputs.json").write_text(
+        json.dumps({"methods": ["unsupported"]}), encoding="utf-8"
+    )
+    with pytest.raises(StateError, match="supported methods"):
+        service._validate_design_evidence()
+    (evidence_dir / "design-inputs.json").write_text(
+        json.dumps({"methods": ["screenshots"]}), encoding="utf-8"
+    )
+    with pytest.raises(StateError, match="screenshot manifest is empty"):
+        service._validate_design_evidence()
+    (evidence_dir / "design-inputs.json").write_text(
+        json.dumps({"methods": ["generated_prototype"]}), encoding="utf-8"
+    )
+
+    verification["passed"] = False
+    (evidence_dir / "browser-verification.json").write_text(
+        json.dumps(verification), encoding="utf-8"
+    )
+    with pytest.raises(StateError, match="browser verification must pass"):
+        service._validate_design_evidence()
+    verification["passed"] = True
+
+    verification["pages"][0]["viewports"] = ["desktop"]
+    (evidence_dir / "browser-verification.json").write_text(
+        json.dumps(verification), encoding="utf-8"
+    )
+    with pytest.raises(StateError, match="desktop, tablet, and mobile"):
+        service._validate_design_evidence()
+
+    verification["pages"][0]["viewports"] = ["desktop", "tablet", "mobile"]
+    verification["pages"][0]["interactions_passed"] = False
+    (evidence_dir / "browser-verification.json").write_text(
+        json.dumps(verification), encoding="utf-8"
+    )
+    with pytest.raises(StateError, match="interactive controls"):
+        service._validate_design_evidence()
+
+    verification["pages"][0]["interactions_passed"] = True
+    verification["pages"][0]["screenshots"] = []
+    (evidence_dir / "browser-verification.json").write_text(
+        json.dumps(verification), encoding="utf-8"
+    )
+    with pytest.raises(StateError, match="rendered screenshots are missing"):
+        service._validate_design_evidence()
+
+    verification["pages"][0]["screenshots"] = ["outside.png"]
+    (evidence_dir / "browser-verification.json").write_text(
+        json.dumps(verification), encoding="utf-8"
+    )
+    with pytest.raises(StateError, match="unsafe or missing screenshot"):
+        service._validate_design_evidence()
+
+    (evidence_dir / "design-inputs.json").write_text(
+        json.dumps({"methods": ["figma_mcp"], "figma": {"status": "unavailable"}}),
+        encoding="utf-8",
+    )
+    with pytest.raises(StateError, match="authenticated MCP inspection"):
+        service._validate_design_evidence()

@@ -79,6 +79,9 @@ def _verify_files(root: Path) -> None:
         ".agentic/state/execution.json",
         ".agentic/logs/events.jsonl",
         "requirements/inbox",
+        "requirements/screenshots/desktop/homepage",
+        "requirements/screenshots/mobile/dashboard",
+        "requirements/screenshots/admin-dashboard",
         "requirements/versions",
         "requirements/reports",
     )
@@ -175,6 +178,25 @@ def run_acceptance(artifact: Path) -> dict[str, object]:
             [str(adt), "config", "validate", ".agentic/config.yaml"], cwd=root
         )
 
+        screenshot = root / "requirements/screenshots/desktop/dashboard/reference.png"
+        screenshot.parent.mkdir(parents=True, exist_ok=True)
+        screenshot_bytes = (
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
+            + (1440).to_bytes(4, "big")
+            + (900).to_bytes(4, "big")
+        )
+        screenshot.write_bytes(screenshot_bytes)
+        screenshot_sync = _run([str(adt), "requirements", "screenshots"], cwd=root)
+        assert "Published screenshot revision 1" in screenshot_sync
+        assert screenshot.read_bytes() == screenshot_bytes
+        assert (root / "requirements/screenshots/manifest.json").is_file()
+        assert (
+            root
+            / "requirements/screenshots/.versions/version-001/source-files"
+            / "desktop/dashboard/reference.png"
+        ).read_bytes() == screenshot_bytes
+        assert (root / "docs/ui-ux/screenshot-reference-analysis.md").is_file()
+
         inbox = root / "requirements/inbox"
         (inbox / "product.md").write_text("REQ-001: Sign in\n", encoding="utf-8")
         _run([str(adt), "requirements", "ingest"], cwd=root)
@@ -216,6 +238,7 @@ def run_acceptance(artifact: Path) -> dict[str, object]:
             "configuration_validation": True,
             "state_database": True,
             "requirements_versions": 2,
+            "screenshot_reference_versioning": True,
             "recovery": True,
         }
 

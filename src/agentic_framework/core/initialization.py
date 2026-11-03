@@ -34,12 +34,23 @@ _DIRECTORIES = (
     ".github/instructions",
     ".github/workflows",
     "requirements/inbox",
+    "requirements/screenshots/desktop/homepage",
+    "requirements/screenshots/desktop/dashboard",
+    "requirements/screenshots/desktop/other",
+    "requirements/screenshots/mobile/homepage",
+    "requirements/screenshots/mobile/dashboard",
+    "requirements/screenshots/mobile/other",
+    "requirements/screenshots/admin-dashboard",
+    "requirements/screenshots/vendor-dashboard",
+    "requirements/screenshots/customer-dashboard",
+    "requirements/screenshots/references",
     "requirements/versions",
     "requirements/reports",
     "docs/discovery",
     "docs/requirements",
     "docs/architecture",
     "docs/design",
+    "docs/ui-ux",
     "docs/decisions",
     "docs/planning",
     "docs/technical",
@@ -64,6 +75,8 @@ This project uses the Agentic Development Framework (ADF).
   and run `adt stage complete`. The CLI persists state; the IDE agent performs the work.
 - Never treat successful `adt continue` output as completion or stage advancement.
 - Do not claim a task or phase is complete until its required checks pass.
+- Treat the UI/UX prototype as the final visual specification: inspect actual Figma/screenshots,
+  browser-test all pages and viewports, preserve revisions, and wait for explicit design approval.
 """
 
 _REQUIREMENTS_README = """# Project requirements
@@ -72,6 +85,10 @@ Place source requirement files in `inbox/`, then run `adt requirements ingest`. 
 source byte-for-byte into an immutable directory under `versions/`, detects duplicates using
 SHA-256 hashes, and compares each new version with its predecessor. Files in `inbox/` are never
 silently overwritten or removed.
+
+Place PNG, JPG, JPEG, or WEBP visual references anywhere under `screenshots/`. ADF discovers them
+recursively, preserves immutable revisions, and updates the screenshot manifest with
+`adt requirements screenshots`. Folder names provide context but never replace visual inspection.
 """
 
 _GITIGNORE = """# Agentic Development Framework local runtime data

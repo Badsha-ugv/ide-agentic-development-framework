@@ -140,5 +140,22 @@ Status: PyPI 0.1.0 release gates passed (2026-11-02)
 
 Phase 8, broader Phase 9 integrations, the VS Code portion of Phase 7, and native AI-provider
 integration remain on the roadmap. IDE agents are the supported reasoning layer; the CLI does not
-embed or call a paid model API. These changes are included in the 0.2.0 release candidate.
+embed or call a paid model API. These changes were released in 0.2.0.
+
+## UI/UX final visual prototype improvement
+
+Status: complete; included in the 0.3.0 release candidate (2026-11-03)
+
+- [x] Existing `ui_ux_design` and `design_review` stages extended without parallel workflow IDs
+- [x] Figma MCP, generated prototype, and screenshot methods supported independently or together
+- [x] Flexible screenshot folders initialized below `requirements/screenshots/`
+- [x] Recursive PNG/JPG/JPEG/WEBP discovery with dimensions, hashes, and contextual hints
+- [x] Immutable screenshot revisions and tamper detection without modifying originals
+- [x] Generated screenshot analysis inventory with agent-editable analysis preserved
+- [x] Design-system-first, page/role inventory, interaction, responsive, and state requirements
+- [x] Structured browser verification gate with rendered screenshot validation
+- [x] Immutable prototype version and revision-history requirements
+- [x] Explicit final visual human approval gate
+- [x] Frontend approved-design traceability requirement
+- [x] Focused unit, integration, and acceptance coverage
 

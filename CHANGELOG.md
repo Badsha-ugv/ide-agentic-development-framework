@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## 0.3.0 - 2026-11-03
+
+### Added
+
+- Recursive PNG/JPG/JPEG/WEBP screenshot-reference discovery with dimensions, contextual hints,
+  immutable byte-preserving revisions, tamper detection, and generated analysis inventory.
+- `adt requirements screenshots` plus automatic screenshot synchronization during requirements
+  ingestion and UI/UX stage preparation.
+- Structured design-input and browser-verification evidence gates, versioned prototypes, and
+  frontend design-reference traceability.
+
+### Changed
+
+- The existing UI/UX stages now treat the interactive prototype as the final visual source of
+  truth, support Figma MCP, generated, and screenshot inputs together, and require desktop,
+  tablet, mobile, interaction, revision, and explicit human-approval evidence.
+
 ## 0.2.0 - 2026-11-02
 
 ### Added

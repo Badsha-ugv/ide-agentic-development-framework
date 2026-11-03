@@ -20,6 +20,11 @@ For `/start`, `/continue`, or `/adf-resume`, perform this loop from the project 
 3. Inspect every available required input and relevant project source. Do not invent missing facts.
 4. Perform the stage's reasoning and repository work using the named specialist role. Keep work
    within the project and preserve unrelated changes.
+   For `ui_ux_design`, run `adt requirements screenshots`, inspect the actual reference images,
+   and treat the interactive prototype as the final visual specification. A metadata manifest does
+   not count as visual inspection. When Figma is selected, use authenticated MCP design context or
+   persist an honest blocker. Browser-test every page at desktop, tablet, and mobile sizes, capture
+   rendered evidence, exercise visible controls, and preserve a versioned prototype.
 5. If a material clarification or external dependency blocks correct work, record it in the
    appropriate artifact and run `adt stage fail --blocked "<actionable blocker>"`. Stop there.
 6. Create every expected output. Outputs must be substantive, non-empty, and traceable to inputs.
@@ -30,6 +35,7 @@ For `/start`, `/continue`, or `/adf-resume`, perform this loop from the project 
 9. Run `adt stage complete`. This is the only normal command that may advance a non-review stage.
 10. If the stage enters `awaiting_approval`, show the registered deliverables and stop. Only the
     user may authorize `adt approve <stage>` or request `adt revise <stage> <feedback>`.
+    Never infer approval of the final visual prototype or begin frontend implementation early.
 11. After revision feedback, update the deliverables, register the new bytes, rerun checks, and
     complete the same stage again. ADF preserves the previous reviewed artifact snapshot.
 12. Summarize artifacts, checks, persisted state, and any remaining blocker. Never claim a stage is

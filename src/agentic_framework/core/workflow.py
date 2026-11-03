@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -13,7 +14,8 @@ from agentic_framework.core.stages import (
     STAGES,
     StageContract,
 )
-from agentic_framework.exceptions import StateError
+from agentic_framework.exceptions import RequirementsError, StateError
+from agentic_framework.requirements_manager import ScreenshotManager
 from agentic_framework.state import RuntimeStore
 
 
@@ -111,6 +113,11 @@ class WorkflowService:
         if execution["status"] == "completed":
             raise StateError(f"stage is already complete: {stage}")
         contract = self.stage_contract(stage)
+        if stage in {"ui_ux_design", "design_review"}:
+            try:
+                ScreenshotManager(self.project_root).sync()
+            except RequirementsError as exc:
+                raise StateError(f"cannot prepare visual references: {exc}") from exc
         if execution["status"] == "failed" and execution["attempt_count"] >= contract.max_attempts:
             self.store.update_execution(
                 stage,
@@ -209,7 +216,88 @@ class WorkflowService:
             raise StateError("required outputs are not registered: " + ", ".join(unregistered))
         if stale:
             raise StateError("registered outputs changed; register them again: " + ", ".join(stale))
+        if stage in {"ui_ux_design", "design_review"}:
+            self._validate_design_evidence()
         return [path.relative_to(self.project_root).as_posix() for path in files]
+
+    def _read_evidence(self, relative: str) -> dict[str, Any]:
+        path = self.project_root / relative
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise StateError(f"invalid structured design evidence {relative}: {exc}") from exc
+        if not isinstance(value, dict):
+            raise StateError(f"structured design evidence must be an object: {relative}")
+        return value
+
+    def _validate_design_evidence(self) -> None:
+        inputs = self._read_evidence("docs/ui-ux/design-inputs.json")
+        methods = inputs.get("methods")
+        supported = set(CONTRACT_BY_ID["ui_ux_design"].supported_design_inputs)
+        if (
+            not isinstance(methods, list)
+            or not methods
+            or any(not isinstance(method, str) or method not in supported for method in methods)
+        ):
+            raise StateError(
+                "design-input evidence must select one or more supported methods: "
+                + ", ".join(sorted(supported))
+            )
+        if "figma_mcp" in methods:
+            figma = inputs.get("figma")
+            if not isinstance(figma, dict) or figma.get("status") != "inspected":
+                raise StateError(
+                    "Figma is selected but authenticated MCP inspection is not recorded; "
+                    "record the blocker instead of claiming completion"
+                )
+        if "screenshots" in methods:
+            manifest = self._read_evidence("requirements/screenshots/manifest.json")
+            screenshots = manifest.get("screenshots")
+            if not isinstance(screenshots, list) or not screenshots:
+                raise StateError(
+                    "screenshot design input is selected but the screenshot manifest is empty"
+                )
+
+        evidence = self._read_evidence("docs/ui-ux/browser-verification.json")
+        pages = evidence.get("pages")
+        if evidence.get("passed") is not True or not isinstance(pages, list) or not pages:
+            raise StateError("browser verification must pass and include every prototype page")
+        required_viewports = {"desktop", "tablet", "mobile"}
+        for page in pages:
+            if not isinstance(page, dict) or not isinstance(page.get("id"), str):
+                raise StateError("each browser-verified page must have a stable id")
+            viewports = page.get("viewports")
+            if (
+                not isinstance(viewports, list)
+                or any(not isinstance(viewport, str) for viewport in viewports)
+                or not required_viewports <= set(viewports)
+            ):
+                raise StateError(
+                    f"browser verification for {page['id']} must cover desktop, tablet, and mobile"
+                )
+            if page.get("interactions_passed") is not True:
+                raise StateError(f"interactive controls did not pass for page: {page['id']}")
+            screenshots = page.get("screenshots")
+            if not isinstance(screenshots, list) or not screenshots:
+                raise StateError(f"rendered screenshots are missing for page: {page['id']}")
+            for screenshot in screenshots:
+                if not isinstance(screenshot, str):
+                    raise StateError(f"invalid rendered screenshot path for page: {page['id']}")
+                relative = Path(screenshot)
+                rendered = (self.project_root / relative).resolve()
+                allowed = (
+                    self.project_root / "design-prototype/verification-screenshots"
+                ).resolve()
+                if (
+                    relative.is_absolute()
+                    or ".." in relative.parts
+                    or not rendered.is_relative_to(allowed)
+                    or not rendered.is_file()
+                    or rendered.is_symlink()
+                ):
+                    raise StateError(
+                        f"browser evidence references an unsafe or missing screenshot: {screenshot}"
+                    )
 
     def complete_stage(self) -> dict[str, Any]:
         """Validate and complete the current stage, stopping at approval gates."""

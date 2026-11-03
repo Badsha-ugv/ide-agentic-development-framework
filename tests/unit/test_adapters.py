@@ -34,13 +34,17 @@ def test_generates_valid_codex_antigravity_and_canonical_configuration(tmp_path:
     assert "does not advance" in continue_skill
     assert "adt stage task" in adf_skill
     assert "does not assume an undocumented" in codex_note
+    assert workflow["schema_version"] == 3
     assert len(workflow["stages"]) == 19
     assert workflow["stages"][5]["approval_required"] is True
     assert contracts["execution_model"] == "ide_agent"
+    assert contracts["schema_version"] == 3
     assert contracts["stages"][1]["expected_outputs"][0] == (
         "docs/discovery/project-overview.md"
     )
     assert len(registry["agents"]) == 11
+    ui_agent = next(item for item in registry["agents"] if item["id"] == "ui_ux_designer")
+    assert "final visual prototype" in ui_agent["responsibilities"][0]
 
 
 def test_adapter_files_are_idempotent(tmp_path: Path) -> None:

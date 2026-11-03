@@ -58,3 +58,16 @@ extraction never prevents source preservation or version publication.
 
 Symbolic links are rejected so ingestion cannot copy files from outside the explicitly managed
 inbox.
+
+## Screenshot design references
+
+Visual references are managed separately below `requirements/screenshots/`; they are not treated
+as textual inbox requirements. PNG, JPG, JPEG, and WEBP images may use arbitrary nested folders.
+Run `adt requirements screenshots` to recursively discover them, record dimensions and contextual
+folder hints, and update `manifest.json` plus `docs/ui-ux/screenshot-reference-analysis.md`.
+
+Each changed screenshot set creates an immutable revision under
+`requirements/screenshots/.versions/` with verified byte-for-byte copies. Existing revisions are
+hash-validated before use, originals remain untouched, unsupported files are ignored, and symbolic
+links or invalid image headers produce actionable errors. Requirements ingestion synchronizes the
+same catalog after it has validated a non-empty inbox.

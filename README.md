@@ -7,7 +7,7 @@ The project is being delivered incrementally. The current implementation provide
 installable package, strict configuration validation, structured logging, safe project
 initialization, immutable requirements versioning, SQLite workflow state, recovery checkpoints,
 lifecycle commands, structured stage execution contracts, artifact validation, approval history,
-and Codex/Antigravity project configuration.
+Codex/Antigravity project configuration, and a browser-verified final visual prototype workflow.
 
 ## Requirements
 
@@ -42,6 +42,7 @@ adt --version
 adt init
 adt config validate path/to/config.yaml
 adt requirements ingest
+adt requirements screenshots
 adt start
 adt status
 adt pause
@@ -104,6 +105,24 @@ formats—including PDF, DOCX, XLSX, and images—are still preserved exactly an
 clear unsupported-extraction status. Optional binary-format extractors are future work.
 
 See `docs/REQUIREMENTS_MANAGEMENT.md` for the file contract and safety behavior.
+
+Place PNG, JPG, JPEG, or WEBP design references anywhere below `requirements/screenshots/` and
+run `adt requirements screenshots`. ADF recursively catalogs them, preserves immutable reference
+revisions, records dimensions and contextual folder hints, and updates
+`docs/ui-ux/screenshot-reference-analysis.md` without modifying originals. Requirements ingestion
+also performs this synchronization.
+
+## UI/UX final visual workflow
+
+The `ui_ux_design` stage accepts authenticated Figma MCP context, generated HTML/CSS/Tailwind
+design, screenshot references, or a combination. Its prototype is the final visual source of truth,
+not a preliminary wireframe. The stage requires a design system, complete page and role inventory,
+responsive and interactive states, immutable prototype versions, and browser evidence for desktop,
+tablet, and mobile rendering. Structured evidence is validated before completion.
+
+The following `design_review` stage always waits for explicit human approval. Frontend work must
+follow the approved prototype and produce design-reference traceability. See
+[`docs/UI_UX_WORKFLOW.md`](docs/UI_UX_WORKFLOW.md).
 
 ## Runtime state and recovery
 

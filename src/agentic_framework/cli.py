@@ -19,7 +19,7 @@ from agentic_framework.exceptions import (
     RequirementsError,
     StateError,
 )
-from agentic_framework.requirements_manager import RequirementsManager
+from agentic_framework.requirements_manager import RequirementsManager, ScreenshotManager
 
 app = typer.Typer(
     name="adt",
@@ -426,4 +426,25 @@ def ingest_requirements(
     if result.impact_report:
         relative_report = result.impact_report.relative_to(result.version_path.parents[1])
         typer.echo(f"Impact report: {relative_report}")
+
+
+@requirements_app.command("screenshots")
+def sync_screenshots(
+    path: Annotated[
+        Path,
+        typer.Option("--path", help="Project directory containing requirements/screenshots."),
+    ] = Path("."),
+) -> None:
+    """Discover screenshot references and publish an immutable manifest revision."""
+
+    try:
+        result = ScreenshotManager(path).sync()
+    except RequirementsError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    action = "Unchanged" if result.duplicate else "Published"
+    typer.echo(f"{action} screenshot revision {result.revision}.")
+    typer.echo(f"Screenshot files: {result.file_count}")
+    typer.echo("Manifest: requirements/screenshots/manifest.json")
+    typer.echo("Analysis: docs/ui-ux/screenshot-reference-analysis.md")
 

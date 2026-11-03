@@ -21,6 +21,7 @@ class StageContract:
     expected_outputs: tuple[str, ...]
     validation_criteria: tuple[str, ...]
     completion_conditions: tuple[str, ...]
+    supported_design_inputs: tuple[str, ...] = ()
     approval_required: bool = False
     failure_behavior: str = "Record the error, preserve work, and do not advance."
     max_attempts: int = 3
@@ -47,6 +48,7 @@ def _contract(
         "Every required output is registered with its current SHA-256 digest.",
         "Validation succeeds without unresolved execution errors.",
     ),
+    design_inputs: tuple[str, ...] = (),
     approval: bool = False,
 ) -> StageContract:
     return StageContract(
@@ -61,6 +63,7 @@ def _contract(
         expected_outputs=outputs,
         validation_criteria=validation,
         completion_conditions=completion,
+        supported_design_inputs=design_inputs,
         approval_required=approval,
     )
 
@@ -204,26 +207,100 @@ CONTRACTS = (
     ),
     _contract(
         "ui_ux_design",
-        "UI/UX design",
-        "Create a reviewable experience design before production frontend work.",
+        "UI/UX Design & Final Visual Prototype",
+        "Produce the complete, high-fidelity visual specification that frontend work must follow.",
         prerequisites=("architecture_review",),
-        inputs=("docs/requirements/*.md", "docs/architecture/*.md"),
-        agent="ui_ux_designer",
-        instructions=(
-            "Use a configured Figma integration only when a Figma file is supplied.",
-            "Otherwise create an interactive local HTML/CSS/JavaScript prototype.",
+        inputs=(
+            "docs/requirements/*.md",
+            "docs/architecture/*.md",
+            "requirements/screenshots/manifest.json",
+            "requirements/screenshots/**",
+            "existing project design assets",
+            "optional Figma file or frame URL",
         ),
-        outputs=("docs/design/ui-ux-specification.md", "design-prototype/index.html"),
+        agent="ui_ux_designer",
+        responsibilities=(
+            "Inventory every required page, user role, journey, state, and responsive layout.",
+            "Treat the interactive prototype as the final visual source of truth, not a wireframe.",
+            "Establish or faithfully preserve a coherent design system before building pages.",
+            "Preserve traceability from requirements and visual references to generated pages.",
+        ),
+        instructions=(
+            "Run adt requirements screenshots before analysis and inspect every discovered image.",
+            "Record the selected Figma, generated-prototype, and screenshot methods in "
+            "docs/ui-ux/design-inputs.json; methods may be combined.",
+            "For Figma, use an available authenticated MCP integration, retrieve design context "
+            "and screenshots, and block honestly when access or authentication fails.",
+            "When no external source exists, propose the visual direction and design system for "
+            "human review before generating every page.",
+            "Build complete role-aware pages with realistic data, responsive layouts, reusable "
+            "components, and loading, empty, success, validation, and error states.",
+            "Give every visible control meaningful behavior; do not ship decorative controls.",
+            "Run the prototype in a browser, inspect all pages at desktop, tablet, and mobile "
+            "sizes, exercise interactions, capture rendered screenshots, fix defects, and repeat.",
+            "Create an immutable prototype version under design-prototype/versions and update "
+            "the revision history without overwriting the only prior approved version.",
+        ),
+        outputs=(
+            "docs/design/ui-ux-specification.md",
+            "docs/ui-ux/design-inputs.json",
+            "docs/ui-ux/page-inventory.md",
+            "docs/ui-ux/design-system.md",
+            "docs/ui-ux/screenshot-reference-analysis.md",
+            "docs/ui-ux/browser-verification.json",
+            "docs/ui-ux/revision-history.md",
+            "design-prototype/index.html",
+            "design-prototype/versions/*/index.html",
+            "design-prototype/verification-screenshots/**",
+        ),
+        validation=(
+            "Design-input evidence selects a supported method and never claims unavailable Figma "
+            "context was inspected.",
+            "Page inventory covers approved roles, requirements, states, and responsive variants.",
+            "The prototype uses a consistent documented design system and reusable components.",
+            "Every visible interactive control has meaningful browser-tested behavior.",
+            "Browser evidence passes every page at desktop, tablet, and mobile viewports and links "
+            "to captured rendered screenshots.",
+            "A versioned prototype and revision history preserve prior visual decisions.",
+        ),
+        completion=(
+            "Every required output and rendered verification screenshot is registered with its "
+            "current SHA-256 digest.",
+            "Structured design-input and browser-verification evidence passes validation.",
+            "The final prototype is complete enough for faithful production implementation.",
+        ),
+        design_inputs=("figma_mcp", "generated_prototype", "screenshots"),
     ),
     _contract(
         "design_review",
-        "Design review",
-        "Validate the prototype and request explicit approval before implementation.",
+        "Final visual prototype review",
+        "Present the complete browser-verified prototype for explicit human approval.",
         prerequisites=("ui_ux_design",),
-        inputs=("docs/design/*.md", "design-prototype/**"),
+        inputs=("docs/design/*.md", "docs/ui-ux/**", "design-prototype/**"),
         agent="main_orchestrator",
-        instructions=("Review accessibility, flows, requirements coverage, and feedback.",),
-        outputs=("docs/design/ui-ux-specification.md", "design-prototype/index.html"),
+        instructions=(
+            "Present the page inventory, local preview instructions, design system, responsive and "
+            "interaction evidence, outstanding issues, and revision history.",
+            "Require explicit human approval; never infer it from generated files or silence.",
+            "For revision feedback, preserve unrelated approved decisions, update affected screens "
+            "consistently, create a new prototype version, and rerun browser verification.",
+        ),
+        outputs=(
+            "docs/design/ui-ux-specification.md",
+            "docs/ui-ux/design-inputs.json",
+            "docs/ui-ux/page-inventory.md",
+            "docs/ui-ux/design-system.md",
+            "docs/ui-ux/browser-verification.json",
+            "docs/ui-ux/revision-history.md",
+            "design-prototype/index.html",
+            "design-prototype/versions/*/index.html",
+            "design-prototype/verification-screenshots/**",
+        ),
+        validation=(
+            "All final visual prototype evidence remains current and registered.",
+            "Outstanding issues and assumptions are disclosed for human review.",
+            "No frontend implementation begins before explicit approval is recorded.",
+        ),
         approval=True,
     ),
     _contract(
@@ -246,12 +323,24 @@ CONTRACTS = (
         "Implementation",
         "Implement approved tasks traceably against requirements and architecture.",
         prerequisites=("development_planning",),
-        inputs=("docs/planning/*.md",),
+        inputs=(
+            "docs/planning/*.md",
+            "docs/ui-ux/*.md",
+            "docs/ui-ux/*.json",
+            "design-prototype/**",
+        ),
         agent="main_orchestrator",
         instructions=(
             "Delegate sequential work, run focused tests, and record changed artifacts.",
+            "Implement frontend pages from the approved prototype without independently "
+            "redesigning or simplifying its layouts, components, interactions, or responsiveness.",
+            "Compare production frontend rendering with approved prototype screenshots and record "
+            "requirement, page, component, and visual-reference traceability.",
         ),
-        outputs=(".agentic/reports/implementation.md",),
+        outputs=(
+            ".agentic/reports/implementation.md",
+            "docs/reports/frontend-design-traceability.md",
+        ),
     ),
     _contract(
         "integration",
@@ -331,7 +420,7 @@ def contract_document() -> dict[str, Any]:
     """Return the complete versioned stage contract document."""
 
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "execution_model": "ide_agent",
         "stages": [contract.as_dict() for contract in CONTRACTS],
     }

@@ -31,6 +31,8 @@ read the shared command skill and
 `.agentic/execution-contracts.yaml`; do not merely run a lifecycle command and report its output.
 The IDE agent performs reasoning and artifact creation while `adt` persists execution, artifacts,
 validation, approvals, and recovery. Never bypass approval gates or overwrite unrelated changes.
+For the UI/UX stage, treat the browser-verified prototype as the final visual specification, sync
+and inspect screenshot references, and require explicit approval before frontend implementation.
 """
 
 _CODEX_NOTE = """# Codex adapter
@@ -78,24 +80,57 @@ def _workflow() -> str:
                 "checkpoint_policy": "on_completion",
             }
         )
-    return _yaml({"schema_version": 2, "name": "default", "stages": stages})
+    return _yaml({"schema_version": 3, "name": "default", "stages": stages})
 
 
 def _registry() -> str:
     agents = []
     for agent_id, name in _AGENTS:
+        responsibilities = [f"Perform {name.lower()} work within approved scope"]
+        required_inputs: list[str] = []
+        expected_outputs = ["standardized agent result"]
+        verification = ["run relevant checks"]
+        if agent_id == "ui_ux_designer":
+            responsibilities = [
+                "Create the complete high-fidelity final visual prototype",
+                "Analyze Figma, screenshots, and approved requirements without inventing evidence",
+                "Verify every page, viewport, and interaction in a browser",
+            ]
+            required_inputs = [
+                "approved requirements and architecture",
+                "screenshot manifest and actual images",
+                "optional authenticated Figma design context",
+            ]
+            expected_outputs = [
+                "versioned interactive prototype",
+                "design system and page inventory",
+                "browser verification evidence",
+            ]
+            verification = [
+                "inspect desktop, tablet, and mobile rendering",
+                "test meaningful behavior for every visible control",
+                "preserve revision and visual-reference traceability",
+            ]
+        elif agent_id == "frontend_developer":
+            responsibilities = [
+                "Implement the explicitly approved final visual prototype faithfully",
+                "Preserve approved layouts, components, interactions, and responsive behavior",
+            ]
+            required_inputs = ["approved design prototype and browser evidence"]
+            expected_outputs = ["frontend design-reference traceability"]
+            verification = ["compare production rendering with approved prototype screenshots"]
         agents.append(
             {
                 "id": agent_id,
                 "name": name,
                 "role": name,
-                "responsibilities": [f"Perform {name.lower()} work within approved scope"],
+                "responsibilities": responsibilities,
                 "scope": "assigned tasks only",
-                "required_inputs": [],
-                "expected_outputs": ["standardized agent result"],
+                "required_inputs": required_inputs,
+                "expected_outputs": expected_outputs,
                 "allowed_tools": ["repository read/write tools", "project test commands"],
                 "restricted_operations": ["secrets", "force push", "unapproved deployment"],
-                "verification_requirements": ["run relevant checks"],
+                "verification_requirements": verification,
                 "handoff_format": "agent result contract",
                 "failure_and_escalation": "record blocker and escalate to orchestrator",
             }

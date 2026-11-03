@@ -23,6 +23,7 @@ from agentic_framework.requirements_manager.comparison import (
     render_impact_report,
 )
 from agentic_framework.requirements_manager.extraction import ExtractionResult, extract_text
+from agentic_framework.requirements_manager.screenshots import ScreenshotManager
 from agentic_framework.requirements_manager.traceability import (
     RequirementRecord,
     extract_requirement_records,
@@ -333,6 +334,7 @@ class RequirementsManager:
         self._prepare_directories()
         with _ingestion_lock(self.requirements_root):
             items = self.inventory()
+            ScreenshotManager(self.project_root).sync()
             published = self._published_versions()
             latest = published[-1] if published else None
             if latest and self._manifest_signature(latest[1]) == self._signature(items):
