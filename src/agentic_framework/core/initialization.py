@@ -13,6 +13,7 @@ from agentic_framework.core.config import (
     FrameworkConfig,
     ProjectConfig,
     ProjectMode,
+    ProjectTask,
     dump_config,
     load_config,
 )
@@ -78,8 +79,12 @@ This project uses the Agentic Development Framework (ADF).
 - Do not claim a task or phase is complete until its required checks pass.
 - Build the complete production frontend before backend work: verify its environment, inspect actual
   Figma/screenshots, browser-test all pages and viewports, and wait for explicit frontend approval.
-- Keep frontend and backend separate until the API integration stage. Never create a disposable
-  design prototype or silently simplify an approved visual reference.
+- Design quality is a primary deliverable: establish a full design system (colors, typography,
+  spacing, motion) before writing any page code. Research comparable production websites to
+  understand industry design conventions relevant to this project.
+- Keep frontend and backend separate until the API integration stage.
+- Never create a disposable prototype or silently simplify an approved visual reference.
+- For existing projects, read the existing-project-analysis before proposing any work.
 """
 
 _REQUIREMENTS_README = """# Project requirements
@@ -101,6 +106,15 @@ _GITIGNORE = """# Agentic Development Framework local runtime data
 .agentic/logs/
 .agentic/proposals/
 """
+
+_TASK_LABELS: dict[ProjectTask, str] = {
+    ProjectTask.FULL_WORKFLOW: "Full workflow (requirements → frontend → backend → testing)",
+    ProjectTask.SECURITY_AUDIT: "Security audit (analyze existing code for vulnerabilities)",
+    ProjectTask.BUG_HUNT: "Bug hunt (find and fix defects in existing code)",
+    ProjectTask.UI_REDESIGN: "UI redesign (rebuild the frontend with improved design)",
+    ProjectTask.SPECIFIC_ISSUE: "Specific issue (address a targeted known problem)",
+    ProjectTask.ADD_FEATURE: "Add feature (extend existing functionality)",
+}
 
 
 class FileStatus(StrEnum):
@@ -126,6 +140,7 @@ class InitializationResult:
 
     inspection: ProjectInspection
     mode: ProjectMode
+    task: ProjectTask = ProjectTask.FULL_WORKFLOW
     files: list[FileResult] = field(default_factory=list)
     git_initialized: bool = False
 
@@ -165,15 +180,42 @@ def _safe_install(root: Path, relative: str, content: str) -> FileResult:
     )
 
 
-def _configuration(root: Path, inspection: ProjectInspection) -> tuple[FrameworkConfig, bool]:
+def _configuration(
+    root: Path,
+    inspection: ProjectInspection,
+    *,
+    mode_override: ProjectMode | None = None,
+    task_override: ProjectTask | None = None,
+) -> tuple[FrameworkConfig, bool]:
     existing = root / ".agentic" / "config.yaml"
     if existing.is_file():
         try:
-            return load_config(existing), True
+            config = load_config(existing)
+            # Apply overrides if provided on top of the existing config.
+            if mode_override is not None or task_override is not None:
+                new_mode = mode_override if mode_override is not None else config.project.mode
+                new_task = task_override if task_override is not None else config.project.task
+                config = config.model_copy(
+                    update={"project": config.project.model_copy(
+                        update={"mode": new_mode, "task": new_task}
+                    )}
+                )
+            return config, True
         except ConfigurationError:
             pass
-    mode = ProjectMode.NEW if inspection.is_empty else ProjectMode.EXISTING
-    return FrameworkConfig(project=ProjectConfig(name=root.name, mode=mode)), False
+
+    if mode_override is not None:
+        mode = mode_override
+    elif inspection.is_empty:
+        mode = ProjectMode.NEW
+    else:
+        mode = ProjectMode.EXISTING
+
+    task = task_override if task_override is not None else ProjectTask.FULL_WORKFLOW
+    return (
+        FrameworkConfig(project=ProjectConfig(name=root.name, mode=mode, task=task)),
+        False,
+    )
 
 
 def _run_git_init(root: Path) -> None:
@@ -192,6 +234,92 @@ def _run_git_init(root: Path) -> None:
         raise InitializationError(f"Git initialization failed: {detail}") from exc
 
 
+def _existing_project_analysis_report(
+    inspection: ProjectInspection,
+    task: ProjectTask,
+) -> str:
+    """Generate a structured analysis report for existing projects."""
+    domain = inspection.domain_status
+    technologies = ", ".join(inspection.technologies) or "none detected"
+    managers = ", ".join(inspection.package_managers) or "none detected"
+    task_label = _TASK_LABELS.get(task, task.value)
+
+    domain_rows = [
+        f"| Frontend     | {'✅ detected' if domain.frontend else '❌ not detected'} |",
+        f"| Backend      | {'✅ detected' if domain.backend else '❌ not detected'} |",
+        f"| Database     | {'✅ detected' if domain.database else '❌ not detected'} |",
+        f"| Auth         | {'✅ detected' if domain.auth else '❌ not detected'} |",
+        f"| CI/CD        | {'✅ detected' if domain.ci else '❌ not detected'} |",
+    ]
+
+    return "\n".join([
+        "# Existing project analysis",
+        "",
+        "This report is generated automatically during `adt init` for existing projects.",
+        "The IDE agent must replace the placeholder sections below with actual findings.",
+        "",
+        "## Project snapshot",
+        "",
+        f"- **Technologies detected**: {technologies}",
+        f"- **Package managers**: {managers}",
+        f"- **Session task**: {task_label}",
+        "",
+        "## Domain completion (filesystem detection)",
+        "",
+        "| Domain       | Status |",
+        "|--------------|--------|",
+        *domain_rows,
+        "",
+        "> **Important**: These are coarse filesystem heuristics. The IDE agent must verify "
+        "each domain by reading the actual source files and confirming functionality.",
+        "",
+        "## Required agent analysis",
+        "",
+        "The `existing_project_analysis` stage contract requires the IDE agent to:",
+        "",
+        "1. Walk the full source tree and catalogue every significant file.",
+        "2. Assess each domain with file-level evidence (not just marker detection).",
+        "3. Identify issues relevant to the session task.",
+        "4. Record all findings in `docs/discovery/existing-project-analysis.md` and "
+        "`docs/discovery/work-completion-status.md`.",
+        "",
+        "## Session task guidance",
+        "",
+        f"**Selected task**: `{task.value}`",
+        "",
+        {
+            ProjectTask.FULL_WORKFLOW: (
+                "Run the full ADF workflow. If some domains are already complete, "
+                "the agent should validate them rather than rebuilding from scratch."
+            ),
+            ProjectTask.SECURITY_AUDIT: (
+                "Focus the analysis on security: authentication, authorization, "
+                "input validation, secrets management, dependency CVEs, and injection risks. "
+                "Advance directly to the security_testing stage after analysis."
+            ),
+            ProjectTask.BUG_HUNT: (
+                "Focus the analysis on defect identification: failing tests, error logs, "
+                "broken routes, type errors, and inconsistent behavior. "
+                "Prioritize reproducing and fixing reported issues."
+            ),
+            ProjectTask.UI_REDESIGN: (
+                "Focus the analysis on the existing frontend: current pages, design system "
+                "(or lack thereof), component structure, and design gaps. "
+                "The frontend_implementation stage will rebuild with an improved design."
+            ),
+            ProjectTask.SPECIFIC_ISSUE: (
+                "Focus the analysis on the specific issue provided by the user. "
+                "Understand the context, reproduce the issue, and plan the fix."
+            ),
+            ProjectTask.ADD_FEATURE: (
+                "Focus the analysis on the existing architecture and code conventions. "
+                "Understand the established patterns before adding new functionality."
+            ),
+        }.get(task, "Follow the standard ADF workflow for the selected task."),
+        "",
+    ]) + "\n"
+
+
 def _report(result: InitializationResult) -> str:
     inspection = result.inspection
     technologies = ", ".join(inspection.technologies) or "none detected"
@@ -207,9 +335,11 @@ def _report(result: InitializationResult) -> str:
         "",
         f"- Project root: `{inspection.root}`",
         f"- Project mode: `{result.mode.value}`",
+        f"- Session task: `{result.task.value}`",
         f"- Git: {git_state}",
         f"- Technologies: {technologies}",
         f"- Package managers: {managers}",
+        f"- Completed domains: {inspection.domain_status.summary}",
         f"- Conflicts: {len(result.conflicts)}",
     ]
     if result.conflicts:
@@ -226,8 +356,24 @@ def initialize_project(
     *,
     initialize_git: bool = True,
     git_initializer: Callable[[Path], None] = _run_git_init,
+    mode_override: ProjectMode | None = None,
+    task_override: ProjectTask | None = None,
 ) -> InitializationResult:
-    """Initialize a target without overwriting existing project files."""
+    """Initialize a target without overwriting existing project files.
+
+    Parameters
+    ----------
+    target:
+        The project directory to initialize.
+    initialize_git:
+        When True, run ``git init`` if no repository is detected.
+    git_initializer:
+        Replacement for the default ``git init`` subprocess call (used in tests).
+    mode_override:
+        Explicitly set the project mode instead of auto-detecting.
+    task_override:
+        Explicitly set the session task.
+    """
 
     try:
         inspection = inspect_project(target)
@@ -236,8 +382,12 @@ def initialize_project(
 
     root = inspection.root
     root.mkdir(parents=True, exist_ok=True)
-    config, existing_config_is_valid = _configuration(root, inspection)
-    result = InitializationResult(inspection=inspection, mode=config.project.mode)
+    config, existing_config_is_valid = _configuration(
+        root, inspection, mode_override=mode_override, task_override=task_override
+    )
+    result = InitializationResult(
+        inspection=inspection, mode=config.project.mode, task=config.project.task
+    )
 
     for relative in _DIRECTORIES:
         (root / relative).mkdir(parents=True, exist_ok=True)
@@ -266,10 +416,26 @@ def initialize_project(
 
     report_path = root / ".agentic" / "reports" / "initialization.md"
     report_path.write_text(_report(result), encoding="utf-8")
+
+    # For existing projects, write the analysis scaffold.
+    if result.mode is ProjectMode.EXISTING:
+        analysis_path = root / ".agentic" / "reports" / "existing-project-analysis.md"
+        analysis_path.write_text(
+            _existing_project_analysis_report(inspection, result.task), encoding="utf-8"
+        )
+
     workflow = store.workflow()
     if workflow["current_stage"] == "project_initialization":
         store.register_artifact("project_initialization", ".agentic/reports/initialization.md")
         store.update_execution("project_initialization", "completed")
-        store.update_workflow("not_started", "project_discovery")
+
+        # For existing projects with specific tasks, skip discovery stages that
+        # apply only to new greenfield work.
+        if result.mode is ProjectMode.EXISTING:
+            next_stage = "existing_project_analysis"
+        else:
+            next_stage = "project_discovery"
+
+        store.update_workflow("not_started", next_stage)
         store.create_checkpoint("project_initialized")
     return result

@@ -113,7 +113,12 @@ class WorkflowService:
         if execution["status"] == "completed":
             raise StateError(f"stage is already complete: {stage}")
         contract = self.stage_contract(stage)
-        if stage in {"ui_ux_design", "design_review"}:
+        if stage in {
+            "ui_ux_design",
+            "design_review",
+            "frontend_implementation",
+            "frontend_review",
+        }:
             try:
                 ScreenshotManager(self.project_root).sync()
             except RequirementsError as exc:
@@ -216,7 +221,12 @@ class WorkflowService:
             raise StateError("required outputs are not registered: " + ", ".join(unregistered))
         if stale:
             raise StateError("registered outputs changed; register them again: " + ", ".join(stale))
-        if stage in {"ui_ux_design", "design_review"}:
+        if stage in {
+            "ui_ux_design",
+            "design_review",
+            "frontend_implementation",
+            "frontend_review",
+        }:
             self._validate_frontend_evidence(stage)
         return [path.relative_to(self.project_root).as_posix() for path in files]
 
@@ -247,7 +257,11 @@ class WorkflowService:
     def _validate_frontend_evidence(self, stage: str) -> None:
         inputs = self._read_evidence("docs/frontend/design-inputs.json")
         methods = inputs.get("methods")
-        supported = set(CONTRACT_BY_ID["ui_ux_design"].supported_design_inputs)
+        frontend_contract = (
+            CONTRACT_BY_ID.get("frontend_implementation")
+            or CONTRACT_BY_ID.get("ui_ux_design")
+        )
+        supported = set(frontend_contract.supported_design_inputs) if frontend_contract else set()
         if (
             not isinstance(methods, list)
             or not methods

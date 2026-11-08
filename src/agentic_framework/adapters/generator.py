@@ -12,7 +12,6 @@ _AGENTS = (
     ("main_orchestrator", "Main Orchestrator"),
     ("requirements_analyst", "Requirements Analyst"),
     ("software_architect", "Software Architect"),
-    ("ui_ux_designer", "UI/UX Designer"),
     ("frontend_developer", "Frontend Developer"),
     ("backend_developer", "Backend Developer"),
     ("integration_engineer", "Integration Engineer"),
@@ -31,15 +30,26 @@ read the shared command skill and
 `.agentic/execution-contracts.yaml`; do not merely run a lifecycle command and report its output.
 The IDE agent performs reasoning and artifact creation while `adt` persists execution, artifacts,
 validation, approvals, and recovery. Never bypass approval gates or overwrite unrelated changes.
-In an existing application, detect and follow its actual architecture, tools, conventions, Git
-state, and active ADF artifacts; report discovered defects and conflicts instead of silently
-ignoring them. For the frontend stage, inspect actual Figma/screenshot references, verify the
-environment, and build the complete production frontend with accessible, responsive, meaningful
-interactions. Supplied
-references govern presentation and must have no unapproved visual deviation. Do not create a
-disposable prototype. Require explicit frontend approval before backend planning or implementation.
-Build the backend separately, then connect it through the frontend adapter boundary during the API
-integration stage. A custom `/adf` request may refine current-stage work but cannot skip this order.
+
+**Existing projects**: Read `docs/discovery/existing-project-analysis.md` and
+`.agentic/reports/existing-project-analysis.md` before proposing any work. Adapt the contract
+to the actual architecture; never impose a guessed folder layout. Detect and follow the real
+tech stack, conventions, Git state, and active ADF artifacts; report discovered defects and
+conflicts instead of silently ignoring them.
+
+**Frontend design quality is mandatory**: Before writing any page code, define a complete design
+system (color palette, typography, spacing, motion, breakpoints). Research conventional websites
+and applications similar to the project idea to understand industry design patterns. Build the
+complete production frontend with no disposable prototypes. Supplied references govern presentation
+and must have no unapproved visual deviation. Require explicit frontend approval before backend
+planning or implementation.
+
+**Workflow order**: documents → frontend implementation → frontend approval → backend
+implementation → frontend/backend integration → database validation → security testing →
+code review → Docker/CI/CD → final docs → release. Build the backend separately, then connect it
+through the frontend adapter boundary during the API integration stage.
+
+A custom `/adf` request may refine current-stage work but cannot skip this order.
 """
 
 _CODEX_NOTE = """# Codex adapter
@@ -87,7 +97,7 @@ def _workflow() -> str:
                 "checkpoint_policy": "on_completion",
             }
         )
-    return _yaml({"schema_version": 4, "name": "default", "stages": stages})
+    return _yaml({"schema_version": 5, "name": "default", "stages": stages})
 
 
 def _registry() -> str:
@@ -97,44 +107,40 @@ def _registry() -> str:
         required_inputs: list[str] = []
         expected_outputs = ["standardized agent result"]
         verification = ["run relevant checks"]
-        if agent_id == "ui_ux_designer":
+        if agent_id == "frontend_developer":
             responsibilities = [
-                "Analyze visual references and define a production-ready design system",
-                "Analyze Figma, screenshots, and approved requirements without inventing evidence",
-                "Support exact visual comparison and intentional revision decisions",
+                "Research comparable production websites and apps to inform design decisions",
+                "Define a complete design system (colors, typography, spacing, motion) first",
+                "Verify the frontend stack and environment before implementation",
+                "Build the complete production frontend before any backend implementation",
+                "Match approved references exactly; create a modern, distinctive interface "
+                "when no external reference exists",
+                "Deliver accessible, responsive, meaningful interactions with no generic "
+                "placeholder styling",
             ]
             required_inputs = [
-                "approved requirements and architecture",
-                "screenshot manifest and actual images",
-                "optional authenticated Figma design context",
+                "approved requirements, architecture, and visual references",
+                "docs/discovery/existing-project-analysis.md if mode=existing",
             ]
             expected_outputs = [
-                "design system and page inventory",
-                "visual reference analysis",
+                "docs/frontend/design-research.md",
+                "docs/frontend/design-system.md with concrete token values",
+                "production frontend source with design system applied",
+                "browser verification evidence at desktop, tablet, and mobile",
             ]
-            verification = [
-                "inspect desktop, tablet, and mobile rendering",
-                "test meaningful behavior for every visible control",
-                "preserve revision and visual-reference traceability",
-            ]
-        elif agent_id == "frontend_developer":
-            responsibilities = [
-                "Verify the frontend stack and environment before implementation",
-                "Build the complete production frontend before backend implementation",
-                "Match approved references exactly and deliver modern, accessible interactions",
-            ]
-            required_inputs = ["approved requirements, architecture, and visual references"]
-            expected_outputs = ["production frontend and browser verification evidence"]
             verification = [
                 "prove environment setup and production build before completion",
+                "confirm design system tokens are applied consistently across all pages",
                 "compare actual frontend rendering with every approved reference",
                 "test pages, states, controls, accessibility, console, and responsive layouts",
+                "confirm no hardcoded one-off color, font, or spacing values exist",
             ]
         elif agent_id == "backend_developer":
             responsibilities = [
                 "Implement backend services from approved API and architecture contracts",
                 "Preserve the approved frontend and its adapter boundary",
                 "Implement persistence, validation, security, migrations, and failure behavior",
+                "Write tests covering all API endpoints, business rules, and error paths",
             ]
             required_inputs = ["approved backend plan, architecture, and frontend adapter needs"]
             expected_outputs = ["tested backend implementation and traceability manifest"]
@@ -144,10 +150,54 @@ def _registry() -> str:
                 "Replace frontend mocks through the documented adapter boundary",
                 "Verify API, authentication, validation, and failure-state behavior end to end",
                 "Prevent silent visual drift during frontend/backend integration",
+                "Confirm all loading, empty, error, and success states render with real data",
             ]
             required_inputs = ["approved frontend, verified backend, and API integration plan"]
             expected_outputs = ["API integration report with reproducible evidence"]
             verification = ["run backend, frontend, API, and browser integration checks"]
+        elif agent_id == "security_reviewer":
+            responsibilities = [
+                "Test authentication flows, authorization rules, and session management",
+                "Test all inputs for injection, XSS, CSRF, and mass assignment vulnerabilities",
+                "Audit secrets management, dependency versions, and HTTP security headers",
+                "Document every finding with severity, reproduction steps, and remediation",
+                "Re-test critical and high findings after remediation",
+            ]
+            required_inputs = [
+                "docs/architecture/security-architecture.md",
+                "integrated application source and running environment",
+            ]
+            expected_outputs = [
+                "docs/reports/security-testing.md",
+                "docs/reports/security-remediation.md",
+            ]
+            verification = [
+                "every authentication endpoint is tested",
+                "injection testing covers SQL, XSS, and CSRF at minimum",
+                "dependency audit is complete with CVE status",
+                "no unresolved critical or high findings remain",
+            ]
+        elif agent_id == "qa_engineer":
+            responsibilities = [
+                "Execute the approved test plan against the integrated application",
+                "Map test results to requirement IDs",
+                "Validate the database schema, migrations, indexes, and data integrity",
+                "Document failures with reproduction steps",
+            ]
+            required_inputs = [
+                "docs/planning/backend-testing-plan.md",
+                "docs/requirements/acceptance-criteria.md",
+                "integrated application and database",
+            ]
+            expected_outputs = [
+                "docs/reports/qa-and-testing.md",
+                "docs/reports/database-validation.md",
+            ]
+            verification = [
+                "all acceptance criteria are tested and mapped to requirements",
+                "migration forward and rollback tests pass",
+                "no SQL injection vulnerabilities present",
+            ]
         agents.append(
             {
                 "id": agent_id,

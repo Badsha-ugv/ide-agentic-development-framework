@@ -38,11 +38,12 @@ For `/start`, `/continue`, or `/adf-resume`, perform this loop from the project 
 
 ## Existing-project discipline
 
-For an existing or running application, inspect its real structure before proposing work: source
-roots, frameworks, package managers, build and test commands, routes, modules, data models, API
-boundaries, authentication, deployment configuration, conventions, and current Git changes. Adapt
-the contract to that architecture; never impose a guessed folder layout. Preserve staged, unstaged,
-and unrelated changes.
+For an existing or running application, **always read** `docs/discovery/existing-project-analysis.md`
+and `.agentic/reports/existing-project-analysis.md` before proposing any work. Inspect the real
+structure: source roots, frameworks, package managers, build and test commands, routes, modules,
+data models, API boundaries, authentication, deployment configuration, conventions, and current
+Git changes. Adapt the contract to that architecture; never impose a guessed folder layout.
+Preserve staged, unstaged, and unrelated changes.
 
 Compare requested behavior with the existing application and active ADF artifacts. Record discovered
 bugs, broken commands, security concerns, inconsistent behavior, missing tests, and requirement
@@ -50,43 +51,95 @@ conflicts in the stage deliverable. Fix them only when the current approved scop
 otherwise report them as actionable findings. Synchronize new work with completed and active tasks,
 requirements IDs, decisions, and registered artifacts so parallel-looking requests do not conflict.
 
-## Production frontend execution
+## Frontend implementation execution
 
-For `ui_ux_design`, the deliverable is the actual production frontend—not a wireframe, throwaway
-HTML demo, or design prototype.
+For `frontend_implementation`, the deliverable is the actual production frontend — not a wireframe,
+throwaway HTML demo, design prototype, or generic template.
 
-1. Run `adt requirements screenshots` and open every relevant image. Search approved requirements for
-   Figma URLs. A manifest or filename is not visual inspection.
-2. Inspect the architecture and existing frontend. Record the frontend root, framework, language,
-   styling and component systems, package manager, runtime, install command, and build command.
-3. Install only compatible required dependencies. Prove the environment works before UI coding and
-   record the result in `docs/frontend/technology-and-environment.md`.
-4. Select one or more honest input modes in `docs/frontend/design-inputs.json`: `figma_mcp`,
-   `screenshots`, or `generated_frontend`. When Figma is selected, use authenticated design context
-   and record its requirement source and URL; persist a blocker if it cannot be inspected.
-5. Inventory all roles, routes, journeys, pages, responsive layouts, and relevant loading, empty,
-   success, validation, permission, offline, and error states before declaring coverage complete.
-6. For supplied references, reproduce layout, dimensions, spacing, typography, colors, assets,
-   hierarchy, responsive behavior, and interactions without unapproved deviation. Requirements govern
-   behavior; references govern presentation. Ask when they materially conflict.
-7. Without an external reference, create a distinctive, coherent design system before pages. Use
-   deliberate typography, spacing, color, hierarchy, reusable tokens/components, realistic content,
-   restrained purposeful motion, and strong information architecture. Avoid generic template output.
-8. Every visible control must do meaningful work. Implement semantic structure, keyboard access,
-   visible focus, contrast, reduced-motion support, clear feedback, and good perceived performance.
-9. Keep frontend and backend separate. Use typed mock data behind an adapter/service boundary; do not
-   build backend logic or couple UI components directly to unfinished endpoints in this stage.
-10. Run the real frontend in a browser. Exercise every page, state, navigation path, form, filter,
-    dialog, and other control at desktop, tablet, and mobile sizes. Check the console, capture rendered
-    evidence, compare each page to its reference, fix defects, and repeat.
-11. Register all required evidence and every source file listed in
-    `docs/frontend/implementation-manifest.json`. The manifest must record successful environment and
-    production-build checks. Do not claim exactness based only on code inspection.
+### Step 1 — Design research (mandatory first step)
 
-For `design_review`, present the running production frontend, reference comparison, known constraints,
-browser evidence, and revision history. Stop for explicit approval. Revision feedback changes the
-production frontend itself, documents the intentional difference, preserves unrelated approved work,
-reruns affected build/browser checks, and registers the new bytes. Backend work cannot begin early.
+Before writing any code, research production websites and applications similar to the project idea:
+- Identify 3–5 comparable sites and note their dominant design patterns.
+- Record: color palette choices, typography decisions, navigation patterns, card/list styles,
+  spacing density, use of imagery, micro-interaction patterns, and any unique design language.
+- Identify what makes high-quality sites in this category feel authoritative and trustworthy.
+- Save findings to `docs/frontend/design-research.md`.
+
+### Step 2 — Design system definition (mandatory before page code)
+
+Create `docs/frontend/design-system.md` with concrete values for every token category:
+
+**Colors**: Define hex values for primary, primary-dark, primary-light, secondary, accent,
+background, surface, surface-elevated, text-primary, text-secondary, text-disabled,
+border, divider, success, warning, error, info, and overlay.
+
+**Typography**: Font families (choose from Google Fonts or system fonts matching the project type),
+weight scale (400, 500, 600, 700, 800), size scale (xs through 5xl with rem values), line-height
+scale, and letter-spacing values.
+
+**Spacing**: 4px base unit with a named scale (1–16 steps = 4px–64px).
+
+**Border radius**: sm (4px), md (8px), lg (16px), xl (24px), full (9999px).
+
+**Shadows**: none, xs, sm, md, lg, xl, 2xl — with actual box-shadow values.
+
+**Motion**: duration-fast (100ms), duration-normal (200ms), duration-slow (300ms),
+ease-in, ease-out, ease-in-out, ease-bounce — with cubic-bezier values.
+
+**Breakpoints**: mobile (375px), tablet (768px), desktop (1024px), wide (1440px).
+
+### Step 3 — Environment setup
+
+Inspect the architecture and existing repository. Select the required frontend stack. Install
+dependencies with its package manager. Prove the environment and build work. Record in
+`docs/frontend/technology-and-environment.md`.
+
+### Step 4 — Design inputs
+
+Record input methods in `docs/frontend/design-inputs.json`: `figma_mcp`, `screenshots`, or
+`generated_frontend`. For Figma, use authenticated design context and block honestly when access fails.
+
+### Step 5 — Page inventory
+
+Inventory all roles, routes, journeys, pages, responsive layouts, and all required states
+(loading, empty, success, validation, permission, offline, error) before writing page code.
+Record in `docs/frontend/page-inventory.md`.
+
+### Step 6 — Implementation rules
+
+- **Every color, font, spacing, border radius, shadow, and animation value must reference design
+  system tokens.** No hardcoded one-off values (`#3B82F6` → `var(--color-primary)`).
+- **No Lorem Ipsum on key pages.** Use realistic, project-appropriate placeholder content.
+- **No generic template output.** Every page must feel designed for this specific project.
+- Build complete role-aware production pages with realistic data, reusable components,
+  responsive layouts, and all required states.
+
+### Step 7 — Accessibility
+
+Every visible control must be: semantic HTML, keyboard-accessible, have visible focus outline,
+sufficient contrast (WCAG AA: 4.5:1 text, 3:1 UI), reduced-motion support, and meaningful
+ARIA labels. This is not optional.
+
+### Step 8 — Separation
+
+Keep frontend and backend separate. Use typed mock data behind an adapter/service boundary.
+Do not build backend logic or couple components to unfinished endpoints.
+
+### Step 9 — Browser verification
+
+Run the actual frontend in a browser at desktop (1440px), tablet (768px), and mobile (375px).
+Exercise every page, state, navigation, form, dialog, and control. Check the console for errors.
+Capture rendered screenshots. Compare to references. Fix defects. Repeat until clean.
+
+### Step 10 — Registration
+
+Register all required documents, source files, and verification screenshots. The implementation
+manifest must record successful environment and production-build checks.
+
+For `frontend_review`, present the running production frontend, design system summary, reference
+comparison, known constraints, browser evidence, and revision history. Stop for explicit approval.
+Revision feedback changes the production frontend itself, documents the intentional difference,
+reruns build/browser checks, and registers the new bytes. Backend work cannot begin early.
 
 ## Backend and integration sequence
 
@@ -102,6 +155,22 @@ For `integration`, replace frontend mocks through the adapter boundary. Verify r
 contracts, authentication and authorization, validation, loading, empty, success, retry, timeout, and
 error behavior end to end. Rerun backend, frontend, integration, and browser checks relevant to the
 change. Visual changes require explicit revision rather than silent drift.
+
+## Database validation
+
+For `database_validation`: run all migrations from scratch, attempt rollback, inspect the actual
+schema, compare to `docs/architecture/database-design.md`, run query analysis on primary read paths,
+confirm no SQL injection vulnerabilities, and record all findings with command output as evidence.
+
+## Security testing
+
+For `security_testing`: read `docs/architecture/security-architecture.md` as the security baseline.
+Test every authentication endpoint (login, logout, token refresh, password reset, account lockout).
+Test authorization by attempting cross-user and unauthenticated access. Test all inputs for SQL
+injection, XSS, CSRF, and SSTI. Check HTTP response headers (CSP, X-Frame-Options, HSTS).
+Audit dependencies for CVEs. Confirm secrets never appear in logs, commits, or API responses.
+Document every finding with severity (Critical / High / Medium / Low), reproduction steps,
+evidence, and remediation. Re-test critical and high findings after remediation.
 
 ## Evidence quality
 

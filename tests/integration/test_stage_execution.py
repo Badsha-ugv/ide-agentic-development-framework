@@ -174,7 +174,7 @@ def test_existing_v1_database_is_migrated_additively(tmp_path: Path) -> None:
 
 
 def test_every_stage_has_a_complete_execution_contract() -> None:
-    assert len(CONTRACTS) == 19
+    assert len(CONTRACTS) == 22
     for contract in CONTRACTS:
         assert contract.objective
         assert contract.agent
@@ -184,20 +184,21 @@ def test_every_stage_has_a_complete_execution_contract() -> None:
 
 
 def test_ui_ux_contract_builds_frontend_before_backend_and_integration() -> None:
-    design = next(contract for contract in CONTRACTS if contract.id == "ui_ux_design")
-    review = next(contract for contract in CONTRACTS if contract.id == "design_review")
+    design = next(contract for contract in CONTRACTS if contract.id == "frontend_implementation")
+    review = next(contract for contract in CONTRACTS if contract.id == "frontend_review")
     planning = next(contract for contract in CONTRACTS if contract.id == "development_planning")
     implementation = next(contract for contract in CONTRACTS if contract.id == "implementation")
     integration = next(contract for contract in CONTRACTS if contract.id == "integration")
 
-    assert design.name == "Frontend environment & complete UI implementation"
+    assert design.name == "Frontend implementation"
     assert design.agent == "frontend_developer"
     assert design.supported_design_inputs == (
         "figma_mcp",
         "generated_frontend",
         "screenshots",
     )
-    assert "docs/ui-ux/screenshot-reference-analysis.md" in design.expected_outputs
+    assert "docs/frontend/design-research.md" in design.expected_outputs
+    assert "docs/frontend/design-system.md" in design.expected_outputs
     assert "docs/frontend/implementation-manifest.json" in design.expected_outputs
     assert "docs/frontend/browser-verification.json" in design.expected_outputs
     assert all("design-prototype" not in output for output in design.expected_outputs)
@@ -210,7 +211,7 @@ def test_ui_ux_contract_builds_frontend_before_backend_and_integration() -> None
 def test_frontend_evidence_requires_source_build_and_browser_verification(tmp_path: Path) -> None:
     initialize_project(tmp_path, initialize_git=False)
     service = WorkflowService(tmp_path)
-    service.store.update_workflow("active", "ui_ux_design")
+    service.store.update_workflow("active", "frontend_implementation")
     service.continue_workflow()
     evidence_dir = tmp_path / "docs/frontend"
     evidence_dir.mkdir(parents=True, exist_ok=True)
@@ -262,23 +263,23 @@ def test_frontend_evidence_requires_source_build_and_browser_verification(tmp_pa
     )
 
     with pytest.raises(StateError, match="source file is not registered"):
-        service._validate_frontend_evidence("ui_ux_design")
+        service._validate_frontend_evidence("frontend_implementation")
     service.register_artifact("frontend/src/Dashboard.tsx")
-    service._validate_frontend_evidence("ui_ux_design")
+    service._validate_frontend_evidence("frontend_implementation")
 
     (evidence_dir / "design-inputs.json").write_text("[]", encoding="utf-8")
     with pytest.raises(StateError, match="must be an object"):
-        service._validate_frontend_evidence("ui_ux_design")
+        service._validate_frontend_evidence("frontend_implementation")
     (evidence_dir / "design-inputs.json").write_text(
         json.dumps({"methods": ["unsupported"]}), encoding="utf-8"
     )
     with pytest.raises(StateError, match="supported methods"):
-        service._validate_frontend_evidence("ui_ux_design")
+        service._validate_frontend_evidence("frontend_implementation")
     (evidence_dir / "design-inputs.json").write_text(
         json.dumps({"methods": ["screenshots"]}), encoding="utf-8"
     )
     with pytest.raises(StateError, match="screenshot manifest is empty"):
-        service._validate_frontend_evidence("ui_ux_design")
+        service._validate_frontend_evidence("frontend_implementation")
     (evidence_dir / "design-inputs.json").write_text(
         json.dumps({"methods": ["generated_frontend"]}), encoding="utf-8"
     )
@@ -288,7 +289,7 @@ def test_frontend_evidence_requires_source_build_and_browser_verification(tmp_pa
     manifest["build_passed"] = False
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(StateError, match="production build has not passed"):
-        service._validate_frontend_evidence("ui_ux_design")
+        service._validate_frontend_evidence("frontend_implementation")
     manifest["build_passed"] = True
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
@@ -297,7 +298,7 @@ def test_frontend_evidence_requires_source_build_and_browser_verification(tmp_pa
         json.dumps(verification), encoding="utf-8"
     )
     with pytest.raises(StateError, match="browser verification must pass"):
-        service._validate_frontend_evidence("ui_ux_design")
+        service._validate_frontend_evidence("frontend_implementation")
     verification["passed"] = True
 
     verification["pages"][0]["viewports"] = ["desktop"]
@@ -305,7 +306,7 @@ def test_frontend_evidence_requires_source_build_and_browser_verification(tmp_pa
         json.dumps(verification), encoding="utf-8"
     )
     with pytest.raises(StateError, match="desktop, tablet, and mobile"):
-        service._validate_frontend_evidence("ui_ux_design")
+        service._validate_frontend_evidence("frontend_implementation")
 
     verification["pages"][0]["viewports"] = ["desktop", "tablet", "mobile"]
     verification["pages"][0]["interactions_passed"] = False
@@ -313,7 +314,7 @@ def test_frontend_evidence_requires_source_build_and_browser_verification(tmp_pa
         json.dumps(verification), encoding="utf-8"
     )
     with pytest.raises(StateError, match="interactive controls"):
-        service._validate_frontend_evidence("ui_ux_design")
+        service._validate_frontend_evidence("frontend_implementation")
 
     verification["pages"][0]["interactions_passed"] = True
     verification["pages"][0]["screenshots"] = []
@@ -321,18 +322,18 @@ def test_frontend_evidence_requires_source_build_and_browser_verification(tmp_pa
         json.dumps(verification), encoding="utf-8"
     )
     with pytest.raises(StateError, match="rendered screenshots are missing"):
-        service._validate_frontend_evidence("ui_ux_design")
+        service._validate_frontend_evidence("frontend_implementation")
 
     verification["pages"][0]["screenshots"] = ["outside.png"]
     (evidence_dir / "browser-verification.json").write_text(
         json.dumps(verification), encoding="utf-8"
     )
     with pytest.raises(StateError, match="unsafe or missing file"):
-        service._validate_frontend_evidence("ui_ux_design")
+        service._validate_frontend_evidence("frontend_implementation")
 
     (evidence_dir / "design-inputs.json").write_text(
         json.dumps({"methods": ["figma_mcp"], "figma": {"status": "unavailable"}}),
         encoding="utf-8",
     )
     with pytest.raises(StateError, match="authenticated MCP inspection"):
-        service._validate_frontend_evidence("ui_ux_design")
+        service._validate_frontend_evidence("frontend_implementation")
