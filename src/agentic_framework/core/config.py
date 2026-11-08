@@ -26,6 +26,17 @@ class ProjectMode(StrEnum):
     EXISTING = "existing"
 
 
+class ProjectTask(StrEnum):
+    """The primary task the user wants to perform in this session."""
+
+    FULL_WORKFLOW = "full_workflow"
+    SECURITY_AUDIT = "security_audit"
+    BUG_HUNT = "bug_hunt"
+    UI_REDESIGN = "ui_redesign"
+    SPECIFIC_ISSUE = "specific_issue"
+    ADD_FEATURE = "add_feature"
+
+
 class IdeKind(StrEnum):
     """IDE harnesses known to the initial product specification."""
 
@@ -49,6 +60,7 @@ class ProjectConfig(StrictModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=100)
     mode: ProjectMode = ProjectMode.AUTO
+    task: ProjectTask = ProjectTask.FULL_WORKFLOW
 
     @field_validator("name")
     @classmethod

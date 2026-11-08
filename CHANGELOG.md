@@ -2,21 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
-
-### Changed
-
-- Removed the disposable design-prototype step: the existing UI/UX stage now verifies the frontend
-  toolchain and builds the complete production frontend before backend work begins.
-- Figma links from requirements, recursively discovered screenshots, and generated frontend design
-  remain supported, with exact-reference, accessibility, interaction, responsive, and state checks.
-- Workflow order is now frontend implementation and approval, backend planning and implementation,
-  then explicit frontend/backend API integration.
+## 0.5.0 - 2026-11-08
 
 ### Added
 
-- Structured frontend implementation-manifest validation for environment, production build, actual
-  registered source files, browser evidence, console errors, accessibility, and reference deviations.
+- Interactive `adt init` workflow supporting both new and existing projects with terminal prompts.
+- Existing-project domain detection scanning frontend, backend, database, auth, and CI completion.
+- Session task selection for existing projects: `security_audit`, `bug_hunt`, `specific_issue`, `ui_redesign`, `add_feature`, or `full_workflow`.
+- Automatic existing-project analysis reports generated during initialization: `.agentic/reports/existing-project-analysis.md`, `docs/discovery/existing-project-analysis.md`, and `docs/discovery/work-completion-status.md`.
+- New stages: `existing_project_analysis`, `database_validation`, and `security_testing`.
+- Expanded technology detection covering React, Vue, FastAPI, Flask, Laravel, NestJS, Go, Rust, PHP, Ruby, and Prisma.
+
+### Changed
+
+- Completely removed all UI/UX prototype concepts: the workflow directly builds the production frontend using chosen tech stack (React, Vue, etc.).
+- Renamed stages to `frontend_implementation` and `frontend_review` with high-priority design standards: mandatory research into conventional sites similar to the project idea, comprehensive design system (colors, typography, spacing, motion), and zero generic placeholder styling.
+- Richer agent context: expanded responsibilities, step-by-step instructions, and thorough cross-stage input traceability so agents have complete context.
+- Workflow execution order: documentation → frontend implementation & review → backend planning & implementation → integration → database validation → QA & testing → security testing → code review → CI/CD → final documentation → release review.
+
+## 0.4.0 - 2026-11-03
+
+### Changed
+
+- Removed disposable design-prototype step: the frontend stage verifies the toolchain and builds the complete production frontend before backend work begins.
+- Figma links from requirements, recursively discovered screenshots, and generated frontend design remain supported with exact-reference, accessibility, interaction, responsive, and state checks.
+- Workflow order updated to frontend implementation and approval, backend planning and implementation, then explicit frontend/backend API integration.
+
+### Added
+
+- Structured frontend implementation-manifest validation for environment, production build, actual registered source files, browser evidence, console errors, accessibility, and reference deviations.
 
 ## 0.3.0 - 2026-11-03
 

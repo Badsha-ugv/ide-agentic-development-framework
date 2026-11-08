@@ -2,7 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from agentic_framework.core.config import FrameworkConfig, dump_config, load_config, parse_config
+from agentic_framework.core.config import (
+    FrameworkConfig,
+    ProjectTask,
+    dump_config,
+    load_config,
+    parse_config,
+)
 from agentic_framework.exceptions import ConfigurationError
 
 
@@ -67,4 +73,12 @@ def test_reports_missing_and_malformed_files(tmp_path: Path) -> None:
     malformed.write_text("project: [", encoding="utf-8")
     with pytest.raises(ConfigurationError, match="invalid YAML"):
         load_config(malformed)
+
+
+def test_project_task_configuration(tmp_path: Path) -> None:
+    path = tmp_path / "config.yaml"
+    path.write_text("project:\n  task: security_audit\n", encoding="utf-8")
+    config = load_config(path)
+    assert config.project.task == ProjectTask.SECURITY_AUDIT
+    assert config.project.task.value == "security_audit"
 

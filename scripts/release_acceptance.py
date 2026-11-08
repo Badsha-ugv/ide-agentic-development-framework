@@ -92,8 +92,8 @@ def _verify_files(root: Path) -> None:
     registry = yaml.safe_load(
         (root / ".agentic/agent-registry.yaml").read_text(encoding="utf-8")
     )
-    assert len(workflow["stages"]) == 19
-    assert len(registry["agents"]) == 11
+    assert len(workflow["stages"]) == 22
+    assert len(registry["agents"]) == 10
 
 
 def _verify_database(root: Path) -> None:
@@ -208,6 +208,16 @@ def run_acceptance(artifact: Path) -> dict[str, object]:
         assert (root / "requirements/reports/version-001-to-version-002-impact.md").is_file()
 
         assert "Status: active" in _run([str(adt), "start"], cwd=root)
+        if "existing_project_analysis" in _run([str(adt), "status"], cwd=root):
+            for rel in (
+                "docs/discovery/existing-project-analysis.md",
+                "docs/discovery/work-completion-status.md",
+            ):
+                out = root / rel
+                out.parent.mkdir(parents=True, exist_ok=True)
+                out.write_text(f"# {out.stem}\n\nExisting analysis.\n", encoding="utf-8")
+                _run([str(adt), "artifact", "register", rel], cwd=root)
+            _run([str(adt), "stage", "complete"], cwd=root)
         assert "project_discovery" in _run([str(adt), "continue"], cwd=root)
         discovery_outputs = (
             "docs/discovery/project-overview.md",
