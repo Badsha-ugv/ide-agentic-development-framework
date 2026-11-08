@@ -9,7 +9,7 @@ import typer
 
 from agentic_framework import __version__
 from agentic_framework.core.command_registry import COMMANDS
-from agentic_framework.core.config import dump_config, load_config
+from agentic_framework.core.config import ProjectMode, ProjectTask, dump_config, load_config
 from agentic_framework.core.custom_commands import create_custom_command, custom_commands
 from agentic_framework.core.initialization import FileStatus, initialize_project
 from agentic_framework.core.workflow import WorkflowService
@@ -66,11 +66,39 @@ def init_project(
         bool,
         typer.Option("--git/--no-git", help="Initialize Git when no repository is detected."),
     ] = True,
+    mode: Annotated[
+        ProjectMode | None,
+        typer.Option(
+            "--mode",
+            help="Project mode: new or existing. Skips the interactive prompt.",
+        ),
+    ] = None,
+    task: Annotated[
+        ProjectTask | None,
+        typer.Option(
+            "--task",
+            help=(
+                "Session task for existing projects: "
+                "full_workflow, security_audit, bug_hunt, ui_redesign, "
+                "specific_issue, or add_feature."
+            ),
+        ),
+    ] = None,
 ) -> None:
-    """Safely initialize ADF in a new or existing project."""
+    """Safely initialize ADF in a new or existing project.
+
+    For existing projects, ADF detects completed domains (frontend, backend,
+    database, auth, CI) and writes an analysis scaffold that the IDE agent
+    fills in during the existing_project_analysis stage.
+    """
 
     try:
-        result = initialize_project(path, initialize_git=initialize_git)
+        result = initialize_project(
+            path,
+            initialize_git=initialize_git,
+            mode_override=mode,
+            task_override=task,
+        )
     except InitializationError as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=2) from exc
@@ -78,6 +106,8 @@ def init_project(
     created = sum(item.status is FileStatus.CREATED for item in result.files)
     typer.echo(f"Initialized {result.inspection.root}")
     typer.echo(f"Project mode: {result.mode.value}")
+    typer.echo(f"Session task: {result.task.value}")
+    typer.echo(f"Completed domains: {result.inspection.domain_status.summary}")
     typer.echo(f"Created files: {created}")
     typer.echo(f"Conflicts: {len(result.conflicts)}")
     typer.echo("Report: .agentic/reports/initialization.md")

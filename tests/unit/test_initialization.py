@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from agentic_framework.core.config import ProjectMode, ProjectTask
 from agentic_framework.core.initialization import FileStatus, initialize_project
 from agentic_framework.exceptions import InitializationError
 
@@ -128,4 +129,28 @@ def test_initializer_wraps_invalid_target_error(tmp_path: Path) -> None:
 
     with pytest.raises(InitializationError, match="not a directory"):
         initialize_project(target, initialize_git=False)
+
+
+def test_initialization_mode_and_task_overrides(tmp_path: Path) -> None:
+    result = initialize_project(
+        tmp_path,
+        initialize_git=False,
+        mode_override=ProjectMode.EXISTING,
+        task_override=ProjectTask.SECURITY_AUDIT,
+    )
+    assert result.mode == ProjectMode.EXISTING
+    assert result.task == ProjectTask.SECURITY_AUDIT
+    analysis = (tmp_path / ".agentic" / "reports" / "existing-project-analysis.md").read_text(
+        encoding="utf-8"
+    )
+    assert "security_audit" in analysis
+
+    # Test applying overrides to an existing valid config
+    second = initialize_project(
+        tmp_path,
+        initialize_git=False,
+        mode_override=ProjectMode.EXISTING,
+        task_override=ProjectTask.BUG_HUNT,
+    )
+    assert second.task == ProjectTask.BUG_HUNT
 
