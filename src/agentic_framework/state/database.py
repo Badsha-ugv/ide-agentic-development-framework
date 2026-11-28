@@ -152,9 +152,84 @@ class RuntimeStore:
     def tasks(self) -> list[dict[str, Any]]:
         with self.connect() as connection:
             rows = connection.execute(
-                "SELECT task_id, agent_id, title, status FROM tasks ORDER BY task_id"
+                "SELECT task_id, agent_id, title, description, dependencies_json, "
+                "expected_outputs_json, acceptance_criteria_json, status "
+                "FROM tasks ORDER BY task_id"
             ).fetchall()
-        return [dict(row) for row in rows]
+        result: list[dict[str, Any]] = []
+        for row in rows:
+            item = dict(row)
+            item["dependencies"] = json.loads(item.pop("dependencies_json"))
+            item["expected_outputs"] = json.loads(item.pop("expected_outputs_json"))
+            item["acceptance_criteria"] = json.loads(item.pop("acceptance_criteria_json"))
+            result.append(item)
+        return result
+
+    def task(self, task_id: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT task_id, agent_id, title, description, dependencies_json, "
+                "expected_outputs_json, acceptance_criteria_json, status "
+                "FROM tasks WHERE task_id = ?",
+                (task_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        item = dict(row)
+        item["dependencies"] = json.loads(item.pop("dependencies_json"))
+        item["expected_outputs"] = json.loads(item.pop("expected_outputs_json"))
+        item["acceptance_criteria"] = json.loads(item.pop("acceptance_criteria_json"))
+        return item
+
+    def create_task(
+        self,
+        task_id: str,
+        agent_id: str,
+        title: str,
+        description: str,
+        *,
+        dependencies: tuple[str, ...] | list[str] = (),
+        expected_outputs: tuple[str, ...] | list[str] = (),
+        acceptance_criteria: tuple[str, ...] | list[str] = (),
+    ) -> dict[str, Any]:
+        """Persist a new workflow task with explicit dependencies."""
+
+        with self.connect() as connection:
+            connection.execute(
+                "INSERT INTO tasks(task_id, agent_id, title, description, dependencies_json, "
+                "expected_outputs_json, acceptance_criteria_json, status) "
+                "VALUES(?, ?, ?, ?, ?, ?, ?, 'pending')",
+                (
+                    task_id,
+                    agent_id,
+                    title,
+                    description,
+                    json.dumps(list(dependencies)),
+                    json.dumps(list(expected_outputs)),
+                    json.dumps(list(acceptance_criteria)),
+                ),
+            )
+        self.record_event("task_created", {"task_id": task_id, "agent_id": agent_id})
+        self.write_snapshots()
+        created = self.task(task_id)
+        assert created is not None
+        return created
+
+    def update_task_status(self, task_id: str, status: str) -> dict[str, Any]:
+        """Update the persisted status of an existing task."""
+
+        with self.connect() as connection:
+            cursor = connection.execute(
+                "UPDATE tasks SET status = ? WHERE task_id = ?",
+                (status, task_id),
+            )
+            if cursor.rowcount == 0:
+                raise StateError(f"unknown task: {task_id}")
+        self.record_event("task_updated", {"task_id": task_id, "status": status})
+        self.write_snapshots()
+        updated = self.task(task_id)
+        assert updated is not None
+        return updated
 
     def execution(self, stage_id: str) -> dict[str, Any]:
         """Return execution state, creating a pending row during safe migration."""

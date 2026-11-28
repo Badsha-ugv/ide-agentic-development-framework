@@ -2,23 +2,29 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from importlib.resources import files
 
 import yaml
 
+from agentic_framework.core.config import IdeKind
 from agentic_framework.core.stages import CONTRACTS, contract_document
+from agentic_framework.providers import render_provider_files
 
 _AGENTS = (
     ("main_orchestrator", "Main Orchestrator"),
     ("requirements_analyst", "Requirements Analyst"),
     ("software_architect", "Software Architect"),
+    ("ui_ux_designer", "UI/UX Designer"),
     ("frontend_developer", "Frontend Developer"),
     ("backend_developer", "Backend Developer"),
+    ("mobile_developer", "Mobile Developer"),
     ("integration_engineer", "Integration Engineer"),
     ("qa_engineer", "QA Engineer"),
     ("code_reviewer", "Code Reviewer"),
     ("security_reviewer", "Security Reviewer"),
     ("devops_engineer", "DevOps Engineer"),
+    ("documentation_engineer", "Documentation Engineer"),
 )
 
 _RULES = """# Agentic Development Framework rules
@@ -71,6 +77,13 @@ _ANTIGRAVITY_COMMANDS = {
     "help": "Explain the available ADF commands and stage execution model.",
     "tasks": "Show persisted ADF workflow tasks.",
     "requirements": "Show the latest immutable ADF requirements version.",
+    "analyze": "Inspect the existing project structure, stack, and domain completion.",
+    "plan": "Inspect the dynamic workflow route and complexity classification.",
+    "test": "Inspect verification criteria and run stage-relevant checks.",
+    "docs": "Inspect or update documentation deliverables for the current stage.",
+    "agents": "List specialized ADF agents and their AGENT.md instructions.",
+    "design": "Modify or iterate on the application design while preserving functionality.",
+    "preferences": "View, update, or reset saved user and project design preferences.",
 }
 
 
@@ -203,6 +216,7 @@ def _registry() -> str:
                 "id": agent_id,
                 "name": name,
                 "role": name,
+                "instructions_file": f".agentic/agents/{agent_id}/AGENT.md",
                 "responsibilities": responsibilities,
                 "scope": "assigned tasks only",
                 "required_inputs": required_inputs,
@@ -303,7 +317,9 @@ agent to reason and act; `adt` supplies durable state and validation.
     )
 
 
-def generated_project_files() -> dict[str, str]:
+def generated_project_files(
+    enabled_ides: Sequence[IdeKind] = (IdeKind.CODEX, IdeKind.ANTIGRAVITY),
+) -> dict[str, str]:
     """Return deterministic canonical assets for project initialization."""
 
     skill = (
@@ -325,16 +341,19 @@ def generated_project_files() -> dict[str, str]:
             }
         ),
         ".agentic/agent-registry.yaml": _registry(),
-        ".agents/rules/adf.md": _RULES,
         ".agents/skills/agentic-commands/SKILL.md": skill,
-        ".codex/agents/README.md": _CODEX_NOTE,
     }
-    generated.update(
-        {
-            f".agents/skills/{name}/SKILL.md": _command_skill(name, description)
-            for name, description in _ANTIGRAVITY_COMMANDS.items()
-        }
-    )
-    generated[".agents/skills/adf-resume/SKILL.md"] = _resume_skill()
-    generated[".agents/skills/adf/SKILL.md"] = _adf_skill()
+    generated.update(render_provider_files(enabled_ides, _ANTIGRAVITY_COMMANDS))
+    templates_root = files("agentic_framework").joinpath("templates")
+    for agent_id, _ in _AGENTS:
+        agent_doc = templates_root.joinpath(f"agents/{agent_id}/AGENT.md").read_text(
+            encoding="utf-8"
+        )
+        generated[f".agentic/agents/{agent_id}/AGENT.md"] = agent_doc
+    generated[".agentic/templates/SIMPLE_FEATURE_DOC.md"] = templates_root.joinpath(
+        "docs/SIMPLE_FEATURE_DOC.md"
+    ).read_text(encoding="utf-8")
+    generated[".agentic/templates/MOBILE_ARCHITECTURE.md"] = templates_root.joinpath(
+        "docs/MOBILE_ARCHITECTURE.md"
+    ).read_text(encoding="utf-8")
     return generated

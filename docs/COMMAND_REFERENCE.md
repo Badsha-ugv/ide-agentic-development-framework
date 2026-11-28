@@ -15,7 +15,23 @@ that delegate to the shared `agentic-commands` execution protocol.
 | `/review` | `adt review` | List pending/revision-requested gates and registered deliverables. |
 | `/approve STAGE` | `adt approve STAGE` | Explicitly approve the current waiting gate and advance. |
 | `/revise STAGE FEEDBACK` | `adt revise STAGE FEEDBACK` | Preserve the submitted version, store feedback, and reopen the same stage. |
+| `/analyze` | `adt analyze [--focus QUERY]` | Inspect project structure, stack, test runners, and optional change impact. |
+| `/plan` | `adt plan` | Display the dynamic workflow route and task complexity plan. |
+| `/test` | `adt test` | Show validation criteria and completion conditions for the current stage. |
+| `/docs` | `adt docs` | List expected documentation deliverables and registered artifacts. |
+| `/agents` | `adt agents` | List specialized agents and their `.agentic/agents/<id>/AGENT.md` files. |
+| `/design` | `adt design "INSTRUCTION"` | Record a context-aware design iteration request (Figma or frontend). |
+| `/preferences` | `adt preferences [set\|reset]` | View, update, or reset global and project-specific design preferences. |
 | `/help` | `adt help` | Explain framework commands. |
+
+Additional CLI commands:
+
+```bash
+adt providers
+adt memory
+adt memory decide ADR-001 "Title" "Rationale"
+adt evaluate <agent_id> <stage_id> --score criterion=5
+```
 
 Execution support commands:
 

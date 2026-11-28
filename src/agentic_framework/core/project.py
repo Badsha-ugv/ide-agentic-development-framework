@@ -29,6 +29,10 @@ _TECHNOLOGY_MARKERS: dict[str, tuple[str, ...]] = {
     "Ruby": ("Gemfile",),
     "Prisma": ("schema.prisma",),
     "Python": ("pyproject.toml", "setup.py", "requirements.txt"),
+    "Flutter": ("pubspec.yaml",),
+    "Expo": ("app.json", "app.config.js", "app.config.ts"),
+    "Android": ("android/build.gradle", "android/build.gradle.kts"),
+    "iOS": ("ios/Podfile",),
 }
 
 _PACKAGE_MANAGER_MARKERS: dict[str, tuple[str, ...]] = {
@@ -95,6 +99,15 @@ _CI_MARKERS = (
     ".circleci",
 )
 
+_MOBILE_MARKERS = (
+    "pubspec.yaml",
+    "android/build.gradle",
+    "android/build.gradle.kts",
+    "ios/Podfile",
+    "app.config.ts",
+    "app.config.js",
+)
+
 
 @dataclass(frozen=True, slots=True)
 class DomainStatus:
@@ -105,6 +118,7 @@ class DomainStatus:
     database: bool
     auth: bool
     ci: bool
+    mobile: bool = False
 
     @property
     def fully_complete(self) -> bool:
@@ -123,6 +137,8 @@ class DomainStatus:
             parts.append("auth")
         if self.ci:
             parts.append("CI/CD")
+        if self.mobile:
+            parts.append("mobile")
         return ", ".join(parts) or "none detected"
 
 
@@ -188,6 +204,7 @@ def _detect_domain_status(root: Path) -> DomainStatus:
         database=_any_exists(root, _DATABASE_MARKERS),
         auth=_any_exists(root, _AUTH_MARKERS),
         ci=_any_exists(root, _CI_MARKERS),
+        mobile=_any_exists(root, _MOBILE_MARKERS),
     )
 
 

@@ -48,8 +48,16 @@ def test_generates_valid_codex_antigravity_and_canonical_configuration(tmp_path:
     assert contracts["stages"][2]["expected_outputs"][0] == (
         "docs/discovery/project-overview.md"
     )
-    assert len(registry["agents"]) == 10
+    assert len(registry["agents"]) == 13
+    assert (tmp_path / ".agentic/agents/ui_ux_designer/AGENT.md").is_file()
+    assert (tmp_path / ".agentic/agents/mobile_developer/AGENT.md").is_file()
+    assert (tmp_path / ".agentic/agents/documentation_engineer/AGENT.md").is_file()
+    assert (tmp_path / ".agentic/templates/SIMPLE_FEATURE_DOC.md").is_file()
+    assert (tmp_path / ".agentic/templates/MOBILE_ARCHITECTURE.md").is_file()
+    assert (tmp_path / ".agents/skills/analyze/SKILL.md").is_file()
+    assert (tmp_path / ".agents/skills/plan/SKILL.md").is_file()
     frontend = next(item for item in registry["agents"] if item["id"] == "frontend_developer")
+    assert frontend["instructions_file"] == ".agentic/agents/frontend_developer/AGENT.md"
     assert any("complete production frontend" in r for r in frontend["responsibilities"])
     backend = next(item for item in registry["agents"] if item["id"] == "backend_developer")
     integration = next(item for item in registry["agents"] if item["id"] == "integration_engineer")
@@ -61,5 +69,5 @@ def test_adapter_files_are_idempotent(tmp_path: Path) -> None:
     first = initialize_project(tmp_path, initialize_git=False)
     second = initialize_project(tmp_path, initialize_git=False)
 
-    assert len(first.files) == 24
+    assert len(first.files) == 46
     assert not second.conflicts

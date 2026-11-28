@@ -8,13 +8,24 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from agentic_framework.core.config import (
+    ApprovalPolicy,
+    ProjectMode,
+    ProjectTask,
+    TargetPlatform,
+    TaskComplexity,
+    load_config,
+)
+from agentic_framework.core.gates import validate_security_findings_gate
+from agentic_framework.core.mobile import validate_mobile_evidence
+from agentic_framework.core.routing import classify_complexity, resolve_workflow_route
 from agentic_framework.core.stages import (
     APPROVAL_STAGES,
     CONTRACT_BY_ID,
     STAGES,
     StageContract,
 )
-from agentic_framework.exceptions import RequirementsError, StateError
+from agentic_framework.exceptions import ConfigurationError, RequirementsError, StateError
 from agentic_framework.requirements_manager import ScreenshotManager
 from agentic_framework.state import RuntimeStore
 
@@ -36,6 +47,30 @@ class WorkflowService:
         # Additive and idempotent: upgrades v1 runtimes before v2 tables are read.
         self.store.initialize()
 
+    def workflow_route(self) -> dict[str, Any]:
+        """Return the dynamic stage route and complexity derived from project config."""
+
+        config_path = self.project_root / ".agentic" / "config.yaml"
+        mode = ProjectMode.AUTO
+        task = ProjectTask.FULL_WORKFLOW
+        configured_complexity = TaskComplexity.AUTO
+        if config_path.is_file():
+            try:
+                config = load_config(config_path)
+                mode = config.project.mode
+                task = config.project.task
+                configured_complexity = config.project.complexity
+            except ConfigurationError:
+                pass
+        effective = classify_complexity(task, configured_complexity)
+        stages = resolve_workflow_route(mode, task, effective)
+        return {
+            "mode": mode.value,
+            "task": task.value,
+            "complexity": effective.value,
+            "stages": list(stages),
+        }
+
     def status(self) -> dict[str, Any]:
         """Return workflow state together with the current execution gate."""
 
@@ -43,8 +78,11 @@ class WorkflowService:
         stage = workflow["current_stage"]
         if stage not in CONTRACT_BY_ID:
             raise StateError(f"runtime contains an unknown workflow stage: {stage}")
+        route = self.workflow_route()
         return {
             **workflow,
+            "complexity": route["complexity"],
+            "route": route["stages"],
             "execution": self.store.execution(stage),
             "approval": self.store.approval_status(stage),
             "artifacts": self.store.artifacts(stage),
@@ -228,7 +266,22 @@ class WorkflowService:
             "frontend_review",
         }:
             self._validate_frontend_evidence(stage)
+        if stage == "qa_and_testing" and self._is_mobile_active():
+            validate_mobile_evidence(self.project_root)
+        if stage == "security_testing":
+            validate_security_findings_gate(self.project_root)
         return [path.relative_to(self.project_root).as_posix() for path in files]
+
+    def _is_mobile_active(self) -> bool:
+        config_path = self.project_root / ".agentic" / "config.yaml"
+        if config_path.is_file():
+            try:
+                config = load_config(config_path)
+                if config.project.platform is TargetPlatform.MOBILE:
+                    return True
+            except ConfigurationError:
+                pass
+        return (self.project_root / "docs" / "mobile" / "implementation-manifest.json").is_file()
 
     def _read_evidence(self, relative: str) -> dict[str, Any]:
         path = self.project_root / relative
@@ -382,6 +435,22 @@ class WorkflowService:
                     within=self.project_root / "docs/frontend/verification-screenshots",
                 )
 
+    def _requires_manual_approval(self, stage: str) -> bool:
+        if stage not in APPROVAL_STAGES:
+            return False
+        policy = ApprovalPolicy.STRICT
+        config_path = self.project_root / ".agentic" / "config.yaml"
+        if config_path.is_file():
+            try:
+                policy = load_config(config_path).policies.approval_policy
+            except ConfigurationError:
+                pass
+        if policy is ApprovalPolicy.STRICT:
+            return True
+        if policy is ApprovalPolicy.BALANCED:
+            return stage in {"frontend_review", "design_review", "release_review"}
+        return stage == "release_review"
+
     def complete_stage(self) -> dict[str, Any]:
         """Validate and complete the current stage, stopping at approval gates."""
 
@@ -390,7 +459,7 @@ class WorkflowService:
         if current["status"] != "active" or current["execution"]["status"] != "in_progress":
             raise StateError("current stage must be active and in progress before completion")
         self.validate_current_stage()
-        if stage in APPROVAL_STAGES:
+        if self._requires_manual_approval(stage):
             self.store.set_approval(stage, "pending")
             self.store.update_execution(stage, "awaiting_approval")
             self.store.create_checkpoint("approval_requested")
@@ -418,9 +487,71 @@ class WorkflowService:
         self.store.create_checkpoint(f"stage_{state}")
         return self.status()
 
+    def create_task(
+        self,
+        task_id: str,
+        agent_id: str,
+        title: str,
+        description: str,
+        *,
+        dependencies: tuple[str, ...] | list[str] = (),
+        expected_outputs: tuple[str, ...] | list[str] = (),
+        acceptance_criteria: tuple[str, ...] | list[str] = (),
+    ) -> dict[str, Any]:
+        """Create a persisted task after validating non-empty identity and dependencies."""
+
+        if not task_id.strip() or not title.strip():
+            raise StateError("task_id and title cannot be blank")
+        if self.store.task(task_id) is not None:
+            raise StateError(f"task already exists: {task_id}")
+        for dep in dependencies:
+            if self.store.task(dep) is None:
+                raise StateError(f"task dependency does not exist: {dep}")
+        return self.store.create_task(
+            task_id.strip(),
+            agent_id.strip(),
+            title.strip(),
+            description.strip(),
+            dependencies=dependencies,
+            expected_outputs=expected_outputs,
+            acceptance_criteria=acceptance_criteria,
+        )
+
+    def start_task(self, task_id: str) -> dict[str, Any]:
+        """Transition a task to in_progress only if all dependencies are completed."""
+
+        task = self.store.task(task_id)
+        if task is None:
+            raise StateError(f"unknown task: {task_id}")
+        if task["status"] == "completed":
+            raise StateError(f"task is already completed: {task_id}")
+        unmet: list[str] = []
+        for dep_id in task["dependencies"]:
+            dep = self.store.task(dep_id)
+            if dep is None or dep["status"] != "completed":
+                unmet.append(dep_id)
+        if unmet:
+            raise StateError(
+                f"task {task_id} is blocked by incomplete dependencies: {', '.join(unmet)}"
+            )
+        return self.store.update_task_status(task_id, "in_progress")
+
+    def complete_task(self, task_id: str) -> dict[str, Any]:
+        """Mark a task completed after ensuring it exists."""
+
+        task = self.store.task(task_id)
+        if task is None:
+            raise StateError(f"unknown task: {task_id}")
+        return self.store.update_task_status(task_id, "completed")
+
     def _advance(self, completed_stage: str) -> None:
-        index = STAGES.index(completed_stage)
-        next_stage = STAGES[min(index + 1, len(STAGES) - 1)]
+        route = self.workflow_route()["stages"]
+        if completed_stage in route:
+            index = route.index(completed_stage)
+            next_stage = route[min(index + 1, len(route) - 1)]
+        else:
+            index = STAGES.index(completed_stage)
+            next_stage = STAGES[min(index + 1, len(STAGES) - 1)]
         next_status = "completed" if next_stage == "completed" else "active"
         self.store.update_workflow(next_status, next_stage)
         if next_stage == "completed":

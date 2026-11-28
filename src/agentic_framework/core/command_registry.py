@@ -13,4 +13,11 @@ COMMANDS = {
     "revise": "Record revision feedback for a stage",
     "requirements": "Show the latest requirements version",
     "tasks": "Display persisted tasks",
+    "analyze": "Inspect the project structure, stack, and completed domains",
+    "plan": "Display the dynamic workflow route and task complexity plan",
+    "test": "Inspect verification criteria and test readiness for the current stage",
+    "docs": "List documentation deliverables and templates for the current stage",
+    "agents": "List specialized agents and their instruction files",
+    "design": "Modify or iterate on the application design (Figma or frontend)",
+    "preferences": "View or update saved user and project design preferences",
 }

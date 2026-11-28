@@ -11,12 +11,16 @@ from pathlib import Path
 from agentic_framework.adapters import generated_project_files
 from agentic_framework.core.config import (
     FrameworkConfig,
+    IdeConfig,
+    IdeKind,
     ProjectConfig,
     ProjectMode,
     ProjectTask,
+    TaskComplexity,
     dump_config,
     load_config,
 )
+from agentic_framework.core.intelligence import analyze_existing_project
 from agentic_framework.core.project import ProjectInspection, inspect_project
 from agentic_framework.exceptions import ConfigurationError, InitializationError
 from agentic_framework.state import RuntimeStore
@@ -186,20 +190,45 @@ def _configuration(
     *,
     mode_override: ProjectMode | None = None,
     task_override: ProjectTask | None = None,
+    complexity_override: TaskComplexity | None = None,
+    ide_override: list[IdeKind] | None = None,
 ) -> tuple[FrameworkConfig, bool]:
     existing = root / ".agentic" / "config.yaml"
     if existing.is_file():
         try:
             config = load_config(existing)
             # Apply overrides if provided on top of the existing config.
-            if mode_override is not None or task_override is not None:
+            if (
+                mode_override is not None
+                or task_override is not None
+                or complexity_override is not None
+                or ide_override is not None
+            ):
                 new_mode = mode_override if mode_override is not None else config.project.mode
                 new_task = task_override if task_override is not None else config.project.task
-                config = config.model_copy(
-                    update={"project": config.project.model_copy(
-                        update={"mode": new_mode, "task": new_task}
-                    )}
+                new_complexity = (
+                    complexity_override
+                    if complexity_override is not None
+                    else config.project.complexity
                 )
+                new_ides = (
+                    list(dict.fromkeys(ide_override))
+                    if ide_override is not None
+                    else config.ide.enabled
+                )
+                config = config.model_copy(
+                    update={
+                        "project": config.project.model_copy(
+                            update={
+                                "mode": new_mode,
+                                "task": new_task,
+                                "complexity": new_complexity,
+                            }
+                        ),
+                        "ide": IdeConfig(enabled=new_ides),
+                    }
+                )
+                return config, False
             return config, True
         except ConfigurationError:
             pass
@@ -212,8 +241,13 @@ def _configuration(
         mode = ProjectMode.EXISTING
 
     task = task_override if task_override is not None else ProjectTask.FULL_WORKFLOW
+    complexity = complexity_override if complexity_override is not None else TaskComplexity.AUTO
+    ides = list(dict.fromkeys(ide_override)) if ide_override is not None else [IdeKind.CODEX]
     return (
-        FrameworkConfig(project=ProjectConfig(name=root.name, mode=mode, task=task)),
+        FrameworkConfig(
+            project=ProjectConfig(name=root.name, mode=mode, task=task, complexity=complexity),
+            ide=IdeConfig(enabled=ides),
+        ),
         False,
     )
 
@@ -358,6 +392,8 @@ def initialize_project(
     git_initializer: Callable[[Path], None] = _run_git_init,
     mode_override: ProjectMode | None = None,
     task_override: ProjectTask | None = None,
+    complexity_override: TaskComplexity | None = None,
+    ide_override: list[IdeKind] | None = None,
 ) -> InitializationResult:
     """Initialize a target without overwriting existing project files.
 
@@ -383,7 +419,12 @@ def initialize_project(
     root = inspection.root
     root.mkdir(parents=True, exist_ok=True)
     config, existing_config_is_valid = _configuration(
-        root, inspection, mode_override=mode_override, task_override=task_override
+        root,
+        inspection,
+        mode_override=mode_override,
+        task_override=task_override,
+        complexity_override=complexity_override,
+        ide_override=ide_override,
     )
     result = InitializationResult(
         inspection=inspection, mode=config.project.mode, task=config.project.task
@@ -404,7 +445,7 @@ def initialize_project(
         "AGENTS.md": _AGENTS,
         "requirements/README.md": _REQUIREMENTS_README,
     }
-    generated.update(generated_project_files())
+    generated.update(generated_project_files(enabled_ides=config.ide.enabled))
     result.files.extend(_safe_install(root, path, content) for path, content in generated.items())
 
     if initialize_git and not inspection.has_git:
@@ -419,9 +460,21 @@ def initialize_project(
 
     # For existing projects, write the analysis scaffold.
     if result.mode is ProjectMode.EXISTING:
+        intel = analyze_existing_project(root)
+        extra_lines = [
+            "## Codebase intelligence (read-only scan)",
+            "",
+            f"- **Top-level modules**: {', '.join(intel.modules) or 'none detected'}",
+            f"- **Test runners**: {', '.join(intel.test_runners) or 'none detected'}",
+            f"- **Config files**: {', '.join(intel.config_files) or 'none detected'}",
+            f"- **TODO/FIXME markers**: {intel.todo_count}",
+            "",
+        ]
         analysis_path = root / ".agentic" / "reports" / "existing-project-analysis.md"
         analysis_path.write_text(
-            _existing_project_analysis_report(inspection, result.task), encoding="utf-8"
+            _existing_project_analysis_report(inspection, result.task)
+            + "\n".join(extra_lines),
+            encoding="utf-8",
         )
 
     workflow = store.workflow()

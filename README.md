@@ -6,8 +6,10 @@ human-controlled software development workflows driven through IDE coding agents
 The project is being delivered incrementally. The current implementation provides the
 installable package, strict configuration validation, structured logging, safe project
 initialization, immutable requirements versioning, SQLite workflow state, recovery checkpoints,
-lifecycle commands, structured stage execution contracts, artifact validation, approval history,
-Codex/Antigravity project configuration, and a browser-verified frontend-first delivery workflow.
+lifecycle commands, dynamic complexity-based workflow routing, 13 specialist `AGENT.md` roles,
+multi-provider adapters (Codex, Claude Code, Antigravity, VS Code), existing-project intelligence
+and impact analysis, persistent design preferences, mobile quality gates, safe Git helpers,
+evidence-based QA/security gates, persistent project memory, and role-specific agent evaluation.
 
 ## Requirements
 
@@ -39,10 +41,12 @@ Both entry points expose the same application:
 adt --help
 python -m agentic_framework --help
 adt --version
-adt init
+adt init --mode existing --task add_feature --complexity level_2 --ide claude --ide vscode
 adt config validate path/to/config.yaml
 adt requirements ingest
 adt requirements screenshots
+adt analyze --focus "customer export"
+adt plan
 adt start
 adt status
 adt pause
@@ -59,6 +63,14 @@ adt review
 adt approve requirements_review
 adt revise requirements_review "Clarify the acceptance criteria"
 adt tasks
+adt test
+adt docs
+adt agents
+adt providers
+adt design "use a sidebar instead of top navigation"
+adt preferences
+adt memory
+adt evaluate qa_engineer qa_and_testing --score test_coverage=5 --score edge_case_identification=4 --score bug_detection=5 --score test_reliability=4
 adt command create verify-api "Run the current-stage API checks"
 adt command list
 ```
@@ -145,15 +157,19 @@ then uses `adt stage complete` to validate and advance. Review stages stop at
 [`docs/COMMAND_REFERENCE.md`](docs/COMMAND_REFERENCE.md), and
 [`docs/STAGE_EXECUTION.md`](docs/STAGE_EXECUTION.md).
 
-## IDE configuration
+## IDE & AI provider configuration
 
-ADF generates root `AGENTS.md`, command-named Antigravity skills under `.agents/skills/`, a shared
-execution protocol under `.agents/skills/agentic-commands/`, and rules under `.agents/rules/`.
-Antigravity indexes each skill as `/<skill-name>`, so `/continue` invokes the generated `continue`
-skill and causes the IDE agent—not the terminal process—to execute the current stage. The Codex adapter
-uses the documented root instructions and repository-local skill surfaces. The `.codex/agents/`
-directory contains an informational compatibility note; ADF does not claim an undocumented
-custom-agent file format is automatically discovered.
+ADF generates root `AGENTS.md`, specialist instructions under `.agentic/agents/<id>/AGENT.md`,
+command-named Antigravity skills under `.agents/skills/`, a shared execution protocol under
+`.agents/skills/agentic-commands/`, and rules under `.agents/rules/`. When enabled via `--ide` or
+`.agentic/config.yaml`, ADF also generates **Claude Code** instructions (`CLAUDE.md`,
+`.claude/commands/*.md`) and **VS Code** instructions (`.github/copilot-instructions.md`,
+`.github/instructions/adf.instructions.md`). Antigravity indexes each skill as `/<skill-name>`, so
+`/continue` invokes the generated `continue` skill and causes the IDE agent—not the terminal
+process—to execute the current stage. The Codex adapter uses the documented root instructions and
+repository-local skill surfaces. The `.codex/agents/` directory contains an informational
+compatibility note; ADF does not claim an undocumented custom-agent file format is automatically
+discovered.
 
 After `adt init` and `adt requirements ingest`, open the project root in Antigravity and type
 `/continue`. Generated rules instruct the agent to load the current contract, perform project

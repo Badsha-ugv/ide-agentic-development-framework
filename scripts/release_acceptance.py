@@ -93,7 +93,7 @@ def _verify_files(root: Path) -> None:
         (root / ".agentic/agent-registry.yaml").read_text(encoding="utf-8")
     )
     assert len(workflow["stages"]) == 22
-    assert len(registry["agents"]) == 10
+    assert len(registry["agents"]) == 13
 
 
 def _verify_database(root: Path) -> None:
@@ -156,7 +156,7 @@ def run_acceptance(artifact: Path) -> dict[str, object]:
         _verify_files(new_project)
         _verify_database(new_project)
         assert "Project mode: new" in new_init
-        assert "Created files: 24" in new_init
+        assert "Created files: 46" in new_init
         assert "Created files: 0" in new_second_init
 
         init_output = _run([str(adt), "init", "--no-git"], cwd=root)
@@ -170,7 +170,7 @@ def run_acceptance(artifact: Path) -> dict[str, object]:
         report = (root / ".agentic/reports/initialization.md").read_text(encoding="utf-8")
         assert "Django" in report and "JavaScript" in report and "npm" in report
         assert "Project mode: existing" in init_output
-        assert "Created files: 23" in init_output
+        assert "Created files: 45" in init_output
         assert "Conflicts: 1" in init_output
         assert "Created files: 0" in second_init
         assert "Conflicts: 1" in second_init

@@ -37,12 +37,32 @@ class ProjectTask(StrEnum):
     ADD_FEATURE = "add_feature"
 
 
+class TaskComplexity(StrEnum):
+    """Execution complexity level controlling dynamic workflow routing."""
+
+    AUTO = "auto"
+    LEVEL_1 = "level_1"
+    LEVEL_2 = "level_2"
+    LEVEL_3 = "level_3"
+
+
+class TargetPlatform(StrEnum):
+    """Target application platform(s)."""
+
+    AUTO = "auto"
+    WEB = "web"
+    MOBILE = "mobile"
+    FULLSTACK = "fullstack"
+
+
 class IdeKind(StrEnum):
-    """IDE harnesses known to the initial product specification."""
+    """Supported AI coding environments and provider adapters."""
 
     CODEX = "codex"
+    CLAUDE = "claude"
     ANTIGRAVITY = "antigravity"
     VSCODE = "vscode"
+    CUSTOM = "custom"
 
 
 class LogLevel(StrEnum):
@@ -61,6 +81,8 @@ class ProjectConfig(StrictModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     mode: ProjectMode = ProjectMode.AUTO
     task: ProjectTask = ProjectTask.FULL_WORKFLOW
+    complexity: TaskComplexity = TaskComplexity.AUTO
+    platform: TargetPlatform = TargetPlatform.AUTO
 
     @field_validator("name")
     @classmethod
@@ -103,11 +125,20 @@ class IdeConfig(StrictModel):
         return value
 
 
+class ApprovalPolicy(StrEnum):
+    """Configurable stage approval gate strictness."""
+
+    STRICT = "strict"
+    BALANCED = "balanced"
+    MINIMAL = "minimal"
+
+
 class PolicyConfig(StrictModel):
     """Conservative capability defaults for future execution phases."""
 
     allow_network: bool = False
     allow_destructive_operations: bool = False
+    approval_policy: ApprovalPolicy = ApprovalPolicy.STRICT
 
 
 class FrameworkConfig(StrictModel):

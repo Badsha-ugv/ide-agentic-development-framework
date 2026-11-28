@@ -14,7 +14,8 @@ Then open the project root in Antigravity. ADF generates:
 - `.agents/skills/<command>/SKILL.md` files that register commands such as `/continue`;
 - `.agents/skills/agentic-commands/SKILL.md` with the shared execution loop;
 - `.agents/skills/adf/SKILL.md` for state-aware custom requests;
-- `.agents/skills/adf-resume/SKILL.md` for ADF checkpoint recovery; and
+- `.agents/skills/adf-resume/SKILL.md` for ADF checkpoint recovery;
+- `.agentic/agents/<agent_id>/AGENT.md` with specialist instructions for each role; and
 - `.agentic/execution-contracts.yaml` with stage-specific responsibilities and outputs.
 
 Start a new conversation and type `/continue`. Antigravity should interpret it as an ADF request,

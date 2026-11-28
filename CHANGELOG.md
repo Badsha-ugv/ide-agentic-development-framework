@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.0 - 2026-11-28
+
+### Added
+
+- **Dynamic Workflow Routing & Complexity Levels**: `TaskComplexity` (`auto`, `level_1`, `level_2`, `level_3`) and `resolve_workflow_route()` in `core/routing.py` so existing projects and scoped tasks route only through required stages.
+- **Canonical Specialist `AGENT.md` Instructions**: 13 specialist instruction files under `.agentic/agents/<id>/AGENT.md` (including `ui_ux_designer`, `mobile_developer`, and `documentation_engineer`) plus simplified documentation template `.agentic/templates/SIMPLE_FEATURE_DOC.md` and `.agentic/templates/MOBILE_ARCHITECTURE.md`.
+- **Task Dependency Enforcement**: `WorkflowService.create_task()`, `start_task()`, and `complete_task()` backed by SQLite `tasks`.
+- **Multi-Provider Adapter Architecture (`providers/`)**: Normalized `ProviderAdapter` runtime supporting **Codex**, **Claude Code** (`CLAUDE.md`, `.claude/commands/`), **Antigravity** (`.agents/`), **VS Code** (`.github/copilot-instructions.md`, `.github/instructions/adf.instructions.md`), and custom providers (`adt providers`, `adt init --ide`).
+- **Existing Project Intelligence (`core/intelligence.py`)**: Dependency, module, test-runner, and `TODO`/`FIXME` scanning plus `analyze_impact()` (`adt analyze --focus`).
+- **Design Intelligence & Preference Engine (`core/preferences.py`)**: Global and project-scoped persistent design preferences, `adt preferences` (`show`, `set`, `reset`), and context-aware `adt design` iteration.
+- **Mobile Development (`core/mobile.py`)**: `TargetPlatform` config, Flutter/Expo/Android/iOS detection, and Android/iOS quality-gate validation.
+- **QA, Security & Git Workflow (`integrations/git.py`, `core/gates.py`)**: Safe Git branch/commit helpers, configurable `ApprovalPolicy` (`strict`, `balanced`, `minimal`), structured `BugReport`, and security findings gate.
+- **Persistent Project Memory & Agent Evaluation (`core/memory.py`, `core/evaluation.py`)**: Append-only project decision log (`adt memory`), agent outcome notes, and role-specific output evaluation (`adt evaluate`).
+- **New CLI & IDE Commands**: `analyze`, `plan`, `test`, `docs`, `agents`, `design`, `preferences`, `providers`, `memory`, `evaluate`.
+
 ## 0.5.0 - 2026-11-08
 
 ### Added
